@@ -256,6 +256,8 @@ export default function SettingsPage() {
         <p className="muted small">On iPhone, add the app to your Home Screen (Share → Add to Home Screen) so iOS keeps its data.</p>
       </section>
 
+      <p className="muted small">Version {__BUILD__}</p>
+
       <section className="panel">
         <h2>Danger zone</h2>
         <button className="btn danger" onClick={wipe}>

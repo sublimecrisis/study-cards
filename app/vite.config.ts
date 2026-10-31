@@ -6,12 +6,15 @@ import { VitePWA } from 'vite-plugin-pwa'
 // https://vite.dev/config/
 export default defineConfig({
   base: './',
+  // Shown in Settings so we can tell which version a device is running.
+  define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC') },
   // ../import is readable by the dev server so the Knowt files can be test-imported.
   server: { port: 5174, fs: { allow: ['.', '../import'] } },
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Study Cards',
