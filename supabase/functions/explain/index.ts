@@ -1,8 +1,8 @@
-// Study Cards — "Explain why" server function (Supabase Edge Function, Deno).
+// Study Cards - "Explain why" server function (Supabase Edge Function, Deno).
 // Holds the OpenRouter key server-side so it never ships in the public app.
 // Only signed-in users can call it (Supabase verifies the JWT before this runs).
 //
-// Secrets (Supabase → Edge Functions → Secrets):
+// Secrets (Supabase -> Edge Functions -> Secrets):
 //   OPENROUTER_API_KEY  required
 //   OPENROUTER_MODEL    optional, default anthropic/claude-haiku-5.5
 
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     `Flashcard definition: ${definition}`,
     notes && `Card notes: ${notes}`,
     chosen
-      ? `The student was asked for the ${answerSide} and answered: "${chosen}"${chosenMeans ? ` — which is actually the ${answerSide === 'term' ? 'term for' : 'definition of'}: "${chosenMeans}"` : ''}.`
+      ? `The student was asked for the ${answerSide} and answered: "${chosen}"${chosenMeans ? ` - which is actually the ${answerSide === 'term' ? 'term for' : 'definition of'}: "${chosenMeans}"` : ''}.`
       : 'The student got this card wrong (or asked for an explanation).',
   ].filter(Boolean)
 
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
   if (!r.ok) {
     const detail = await r.text()
     console.error('openrouter', r.status, detail.slice(0, 300))
-    const msg = r.status === 402 ? 'OpenRouter account is out of credit.' : r.status === 401 ? 'OpenRouter key was rejected.' : 'The AI service had a problem — try again.'
+    const msg = r.status === 402 ? 'OpenRouter account is out of credit.' : r.status === 401 ? 'OpenRouter key was rejected.' : 'The AI service had a problem - try again.'
     return new Response(JSON.stringify({ error: msg }), { status: 502, headers })
   }
   const j = await r.json()
