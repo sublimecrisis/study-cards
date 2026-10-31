@@ -48,7 +48,11 @@ export async function explain(req: ExplainRequest): Promise<string> {
     const detail = ctx instanceof Response ? await ctx.json().catch(() => null) : null
     throw new Error(detail?.error ?? "Couldn't reach the explanation service — try again in a moment.")
   }
-  const text = String((data as { text?: string })?.text ?? '').trim()
+  // Plain text only: drop any markdown emphasis the model slips in.
+  const text = String((data as { text?: string })?.text ?? '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/(^|\s)\*(\S.*?)\*(?=\s|[.,;:!?]|$)/g, '$1$2')
+    .trim()
   if (!text) throw new Error('No explanation came back — try again.')
   await updateCard(fresh.id, { explanations: { ...(fresh.explanations ?? {}), [keyOf(req.chosen)]: text } })
   return text

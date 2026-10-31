@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
 
   const system = [
     'You are a concise, encouraging study tutor helping a student prepare for certification exams.',
-    'Explain in at most 120 words, plain language, no headings:',
+    'Explain in at most 120 words, plain text only (no markdown, no asterisks, no headings):',
     '1) why the correct answer is correct (the underlying idea, not a restatement),',
     "2) if the student's answer is given, how it differs and why it's wrong or easy to confuse,",
     '3) one short memory tip or exam tip.',
@@ -74,8 +74,10 @@ Deno.serve(async (req) => {
     },
     body: JSON.stringify({
       model: Deno.env.get('OPENROUTER_MODEL') || 'anthropic/claude-haiku-5.5',
-      max_tokens: 350,
+      max_tokens: 900,
       temperature: 0.3,
+      // Explanations don't need hidden reasoning; it also ate the output budget and cut answers off.
+      reasoning: { enabled: false },
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: lines.join('\n') },
@@ -89,6 +91,8 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: msg }), { status: 502, headers })
   }
   const j = await r.json()
-  const text = j?.choices?.[0]?.message?.content ?? ''
+  const choice = j?.choices?.[0]
+  const text = choice?.message?.content ?? ''
+  if (choice?.finish_reason === 'length') console.warn('explanation hit max_tokens')
   return new Response(JSON.stringify({ text }), { headers })
 })
