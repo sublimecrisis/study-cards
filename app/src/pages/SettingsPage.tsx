@@ -49,7 +49,6 @@ function SetPasswordForm() {
 function CloudSync() {
   const s = useSyncStatus()
   const [email, setEmail] = useState('')
-  const [password, setPw] = useState('')
   const [code, setCode] = useState('')
   const [step, setStep] = useState<'password' | 'email' | 'code'>('password')
   const [busy, setBusy] = useState(false)
@@ -111,10 +110,23 @@ function CloudSync() {
       <p className="muted">Sign in to keep your cards and progress in sync between your iPhone and computer.</p>
       {step === 'password' && (
         <>
-          <form className="pw-form" onSubmit={(e) => (e.preventDefault(), run(() => signInWithPassword(email, password)))}>
-            <input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required />
-            <input type="password" autoComplete="current-password" value={password} onChange={(e) => setPw(e.target.value)} placeholder="Password" />
-            <button className="btn primary" disabled={busy || !email.includes('@') || !password}>
+          <form
+            className="pw-form"
+            onSubmit={(e) => {
+              e.preventDefault()
+              // Read the fields directly: iOS password autofill often fills them without
+              // firing change events, so React state can still be empty here.
+              const f = new FormData(e.currentTarget)
+              const em = String(f.get('email') ?? '').trim()
+              const pw = String(f.get('password') ?? '')
+              if (!em.includes('@') || !pw) return setErr('Enter your email and password.')
+              setEmail(em)
+              run(() => signInWithPassword(em, pw))
+            }}
+          >
+            <input name="email" type="email" autoComplete="username" defaultValue={email} placeholder="Email" />
+            <input name="password" type="password" autoComplete="current-password" placeholder="Password" />
+            <button className="btn primary" disabled={busy}>
               {busy ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
