@@ -32,7 +32,7 @@ Priority key: **[1]** first release · **[2]** second release · **[3]** later
 | Import from Quizlet/Knowt | Paste copied term lists straight in. Quizlet has a text export. **Knowt: no official export found (2026-10-31)** → check the set's menu for export/print first; fallback = select-all on the set page and paste into the importer (the paste importer must handle that messy text) | [1] |
 | AI cards from notes | Paste notes / upload PDF or slides → draft cards → you edit, then save. One "AI provider" setting: **local Mac model (preferred)** or **OpenRouter** (pay-per-use) — see PLAN.md | [2] |
 | AI cards from a photo | Snap a textbook page or whiteboard → draft cards | [3] |
-| AI explanations | "Explain this" on a card or missed quiz question: why the answer is right, an example, related concepts (Paul's idea, 2026-10-31 — details to confirm) | [2] |
+| AI explanations | **BUILT 2026-10-31.** On a wrong answer: what your pick actually means + the correct answer (instant), and "✨ Explain why" (AI, saved per card). Also on Review's answer side. | [2] |
 | Anki import | `.apkg` files | [3] |
 
 ## 3. Study modes
