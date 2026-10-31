@@ -21,7 +21,14 @@ function CloudSync() {
     try {
       await f()
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e))
+      const m = e instanceof Error ? e.message : String(e)
+      setErr(
+        /expired|invalid/i.test(m)
+          ? 'That link or code has expired or was already used (each one works once). Tap "Send a new sign-in email" and use the newest email.'
+          : /rate|security purposes|seconds/i.test(m)
+            ? `${m} — Supabase limits how often emails can be sent; wait a minute and try again.`
+            : m,
+      )
     } finally {
       setBusy(false)
     }
@@ -83,8 +90,8 @@ function CloudSync() {
               {busy ? 'Checking…' : 'Sign in'}
             </button>
           </form>
-          <button className="btn link small" onClick={() => (setStep('email'), setCode(''))}>
-            Use a different email
+          <button className="btn link small" onClick={() => (setStep('email'), setCode(''), setErr(''))}>
+            Send a new sign-in email
           </button>
         </>
       )}

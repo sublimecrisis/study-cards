@@ -22,7 +22,13 @@ export function parseSignInLink(text: string): { tokenHash: string; type: LinkTy
   const m = text.trim().match(/https?:\/\/\S+/)
   if (!m) return null
   try {
-    const u = new globalThis.URL(m[0])
+    let u = new globalThis.URL(m[0])
+    // Mail apps wrap links in a redirect (google.com/url?q=…, safelinks ?url=…): unwrap to the real one.
+    for (let i = 0; i < 3; i++) {
+      const inner = u.searchParams.get('q') ?? u.searchParams.get('url') ?? u.searchParams.get('u')
+      if (u.searchParams.get('token') || !inner?.startsWith('http')) break
+      u = new globalThis.URL(inner)
+    }
     const token = u.searchParams.get('token') ?? u.searchParams.get('token_hash')
     const type = (u.searchParams.get('type') ?? 'magiclink') as LinkType
     return token ? { tokenHash: token, type } : null

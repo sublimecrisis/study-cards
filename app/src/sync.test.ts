@@ -7,6 +7,10 @@ describe('pasted sign-in link', () => {
     expect(parseSignInLink('Confirm: https://x.supabase.co/auth/v1/verify?token=abc123&type=signup&redirect_to=http://localhost:5174/ thanks')).toEqual({ tokenHash: 'abc123', type: 'signup' })
   })
   it('treats a plain code as not-a-link', () => expect(parseSignInLink('123456')).toBeNull())
+  it('unwraps a Gmail redirect link', () => {
+    const inner = 'https://x.supabase.co/auth/v1/verify?token=tok9&type=magiclink&redirect_to=http://localhost:5174/'
+    expect(parseSignInLink(`https://www.google.com/url?q=${encodeURIComponent(inner)}&sa=D&source=gmail`)).toEqual({ tokenHash: 'tok9', type: 'magiclink' })
+  })
 })
 
 const remote = (updated_at: number): Remote => ({ kind: 'card', id: 'c1', updated_at, deleted: false, data: {} })
