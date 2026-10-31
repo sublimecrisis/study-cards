@@ -157,11 +157,18 @@ async function push(uid: string) {
   return n
 }
 
+const overlapDone = new Set<string>()
+
 async function pull(uid: string) {
   const saved = readCursor(uid)
-  // Start a little before the saved cursor so rows committed slightly out of order aren't
-  // skipped (re-applying is harmless); after that, page strictly forward.
-  let page = new Date(new Date(saved).getTime() - 10_000).toISOString()
+  // Once per app launch, start a few minutes before the cursor to catch any row that was
+  // committed slightly out of order (re-applying is harmless). Every other pull pages
+  // strictly forward, so a big upload isn't re-downloaded on each sync.
+  let page = saved
+  if (!overlapDone.has(uid)) {
+    page = new Date(new Date(saved).getTime() - 5 * 60_000).toISOString()
+    overlapDone.add(uid)
+  }
   let newest = saved
   let n = 0
   for (;;) {

@@ -51,3 +51,18 @@ export async function verifyCode(email: string, codeOrLink: string) {
 }
 
 export const signOut = () => supabase.auth.signOut()
+
+/**
+ * Password sign-in. Email links don't work well on iPhone: long-pressing a link shows a
+ * live preview that "uses up" the one-time link before it can be pasted.
+ */
+export async function signInWithPassword(email: string, password: string) {
+  const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+  if (error) throw error
+}
+
+/** Set or change the account password (while signed in on another device). */
+export async function setPassword(password: string) {
+  const { error } = await supabase.auth.updateUser({ password })
+  if (error) throw error
+}

@@ -3,15 +3,55 @@ import { useEffect, useState } from 'react'
 import { exportBackup, restoreBackup } from '../backup'
 import { db } from '../db'
 import { getSettings, saveSettings } from '../stats'
-import { sendCode, signOut, verifyCode } from '../cloud'
+import { sendCode, setPassword, signInWithPassword, signOut, verifyCode } from '../cloud'
 import { resetCursors, syncNow, useSyncStatus } from '../sync'
 import { download } from '../util'
+
+function SetPasswordForm() {
+  const [pw, setPw] = useState('')
+  const [pw2, setPw2] = useState('')
+  const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+  const ok = pw.length >= 8 && pw === pw2
+  return (
+    <form
+      className="pw-form"
+      onSubmit={async (e) => {
+        e.preventDefault()
+        setBusy(true)
+        try {
+          await setPassword(pw)
+          setPw('')
+          setPw2('')
+          setMsg('✓ Password saved. Use it to sign in on your other devices.')
+        } catch (er) {
+          setMsg(er instanceof Error ? er.message : String(er))
+        } finally {
+          setBusy(false)
+        }
+      }}
+    >
+      <p className="small">
+        <b>Password for your other devices</b> — set one here, save it in your password manager, then sign in on your
+        iPhone with your email + this password.
+      </p>
+      <input type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="New password (8+ characters)" />
+      <input type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} placeholder="Type it again" />
+      <button className="btn" disabled={!ok || busy}>
+        {busy ? 'Saving…' : 'Save password'}
+      </button>
+      {pw2 && pw !== pw2 && <span className="error small">Passwords don't match</span>}
+      {msg && <span className="small">{msg}</span>}
+    </form>
+  )
+}
 
 function CloudSync() {
   const s = useSyncStatus()
   const [email, setEmail] = useState('')
+  const [password, setPw] = useState('')
   const [code, setCode] = useState('')
-  const [step, setStep] = useState<'email' | 'code'>('email')
+  const [step, setStep] = useState<'password' | 'email' | 'code'>('password')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
@@ -23,11 +63,13 @@ function CloudSync() {
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e)
       setErr(
-        /expired|invalid/i.test(m)
-          ? 'That link or code has expired or was already used (each one works once). Tap "Send a new sign-in email" and use the newest email.'
-          : /rate|security purposes|seconds/i.test(m)
-            ? `${m} — Supabase limits how often emails can be sent; wait a minute and try again.`
-            : m,
+        /invalid login credentials/i.test(m)
+          ? "Email or password didn't match. If you haven't set a password yet, do that first in Settings on a device that's already signed in."
+          : /expired|invalid/i.test(m)
+            ? 'That link or code has expired or was already used (each one works once). Tap "Send a new sign-in email" and use the newest email.'
+            : /rate|security purposes|seconds/i.test(m)
+              ? `${m} — Supabase limits how often emails can be sent; wait a while and try again.`
+              : m,
       )
     } finally {
       setBusy(false)
@@ -59,6 +101,7 @@ function CloudSync() {
             Sign out
           </button>
         </div>
+        <SetPasswordForm />
       </section>
     )
 
@@ -66,23 +109,44 @@ function CloudSync() {
     <section className="panel">
       <h2>Cloud sync</h2>
       <p className="muted">Sign in to keep your cards and progress in sync between your iPhone and computer.</p>
-      {step === 'email' && (
-        <button className="btn link small" onClick={() => setStep('code')}>
-          Already have a sign-in email? Paste its link
-        </button>
-      )}
-      {step === 'email' ? (
-        <form className="row-form" onSubmit={(e) => (e.preventDefault(), run(async () => (await sendCode(email), setStep('code'))))}>
-          <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Your email" required />
-          <button className="btn primary" disabled={busy || !email.includes('@')}>
-            {busy ? 'Sending…' : 'Email me a code'}
+      {step === 'password' && (
+        <>
+          <form className="pw-form" onSubmit={(e) => (e.preventDefault(), run(() => signInWithPassword(email, password)))}>
+            <input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required />
+            <input type="password" autoComplete="current-password" value={password} onChange={(e) => setPw(e.target.value)} placeholder="Password" />
+            <button className="btn primary" disabled={busy || !email.includes('@') || !password}>
+              {busy ? 'Signing in…' : 'Sign in'}
+            </button>
+          </form>
+          <button className="btn link small" onClick={() => (setStep('email'), setErr(''))}>
+            No password yet? Sign in with an email link instead
           </button>
-        </form>
-      ) : (
+        </>
+      )}
+      {step === 'email' && (
+        <>
+          <form className="row-form" onSubmit={(e) => (e.preventDefault(), run(async () => (await sendCode(email), setStep('code'))))}>
+            <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Your email" required />
+            <button className="btn primary" disabled={busy || !email.includes('@')}>
+              {busy ? 'Sending…' : 'Email me a link'}
+            </button>
+          </form>
+          <div className="actions">
+            <button className="btn link small" onClick={() => setStep('code')}>
+              Already have a sign-in email? Paste its link
+            </button>
+            <button className="btn link small" onClick={() => (setStep('password'), setErr(''))}>
+              Back to password sign-in
+            </button>
+          </div>
+        </>
+      )}
+      {step === 'code' && (
         <>
           <p className="small">
-            We emailed <b>{email}</b> (it may land in Gmail's Updates or Spam). <b>Don't tap the link</b> — copy it instead
-            (right-click or long-press → Copy link) and paste it here. If the email shows a code, type that instead.
+            Check <b>{email || 'your email'}</b> (Gmail may put it in Updates or Spam). <b>On a computer:</b> right-click the
+            link → Copy link address, then paste it here. On iPhone, long-pressing the link uses it up — use password
+            sign-in there instead.
           </p>
           <form className="row-form" onSubmit={(e) => (e.preventDefault(), run(() => verifyCode(email, code)))}>
             <input autoComplete="one-time-code" autoCapitalize="off" spellCheck={false} value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste the link (or code)" />
