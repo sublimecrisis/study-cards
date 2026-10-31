@@ -1,0 +1,11 @@
+# Personal — stays on this Mac only (public repo)
+import/
+CURRENT_STATE.md
+PLAN.md
+LEARNING_BRIEF.md
+
+# Build output & dependencies
+node_modules/
+dist/
+.DS_Store
+*.log
