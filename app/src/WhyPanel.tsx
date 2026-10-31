@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { explain, savedExplanation } from './explain'
 import { RichText } from './rich'
 import type { Card } from './types'
@@ -20,8 +20,15 @@ export default function WhyPanel(props: {
   const [text, setText] = useState<string | undefined>(() => savedExplanation(card, chosen))
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const box = useRef<HTMLDivElement>(null)
+  // When an explanation arrives, scroll it into view (on phones it lands below the fold).
+  const asked = useRef(false)
+  useEffect(() => {
+    if (text && asked.current) box.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [text])
 
   const ask = async () => {
+    asked.current = true
     setBusy(true)
     setErr('')
     try {
@@ -54,7 +61,7 @@ export default function WhyPanel(props: {
         </>
       )}
       {text ? (
-        <div className="why-ai">
+        <div className="why-ai" ref={box}>
           <span className="why-label">✨ Explanation</span>
           <RichText text={text} />
         </div>
