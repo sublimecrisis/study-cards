@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Kbd, SessionBar } from '../components'
+import WhyPanel from '../WhyPanel'
 import { CardImage, RichText } from '../rich'
 import { loadScope, readScope, scopeKey } from '../scope'
 import { isDue, preview, Rating, rate } from '../srs'
@@ -125,6 +126,11 @@ export default function Review() {
           </>
         )}
       </div>
+      {shown && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <WhyPanel key={card.id} card={card} answerSide="definition" compact />
+        </div>
+      )}
       {!shown ? (
         <button className="btn primary wide" onClick={() => setShown(true)}>
           Show answer <Kbd>Space</Kbd>

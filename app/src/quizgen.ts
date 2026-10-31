@@ -17,8 +17,10 @@ export interface Question {
   promptSide: 'term' | 'definition'
   answerSide: 'term' | 'definition'
   options?: string[] // mc
+  optionCards?: Card[] // mc: the card each option came from (explains a wrong pick)
   correctIndex?: number // mc
   shown?: string // tf: the answer side shown (may be a wrong one)
+  shownCard?: Card // tf: the card `shown` came from
   tfTrue?: boolean
 }
 
@@ -30,6 +32,10 @@ const words = (s: string) => new Set(s.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [
  * or tags with the right one and has a similar length — so options aren't obviously wrong.
  */
 export function distractors(card: Card, pool: Card[], s: 'term' | 'definition', n = 3): string[] {
+  return distractorCards(card, pool, s, n).map((c) => side(c, s).trim())
+}
+
+export function distractorCards(card: Card, pool: Card[], s: 'term' | 'definition', n = 3): Card[] {
   const right = side(card, s).trim()
   const rw = words(right)
   const seen = new Set([right.toLowerCase()])
@@ -41,14 +47,14 @@ export function distractors(card: Card, pool: Card[], s: 'term' | 'definition', 
       for (const w of words(t)) if (rw.has(w)) shared++
       const tags = c.tags.filter((x) => card.tags.includes(x)).length
       const len = Math.abs(t.length - right.length) / Math.max(t.length, right.length, 1)
-      return { t, score: shared * 2 + tags + (1 - len) * 2 + Math.random() * 1.5 }
+      return { c, t, score: shared * 2 + tags + (1 - len) * 2 + Math.random() * 1.5 }
     })
     .sort((a, b) => b.score - a.score)
-  const out: string[] = []
-  for (const { t } of scored) {
+  const out: Card[] = []
+  for (const { c, t } of scored) {
     if (!t || seen.has(t.toLowerCase())) continue
     seen.add(t.toLowerCase())
-    out.push(t)
+    out.push(c)
     if (out.length === n) break
   }
   return out
@@ -61,15 +67,17 @@ export function makeQuestion(card: Card, pool: Card[], type: QType, answerWith: 
   const promptSide = answerSide === 'term' ? 'definition' : 'term'
   const q: Question = { card, type, promptSide, answerSide }
   if (type === 'mc') {
-    const wrong = distractors(card, pool, answerSide)
+    const wrong = distractorCards(card, pool, answerSide)
     if (wrong.length === 0) return { ...q, type: 'written' } // tiny set: nothing to choose from
-    const options = shuffle([side(card, answerSide), ...wrong])
-    q.options = options
-    q.correctIndex = options.indexOf(side(card, answerSide))
+    const cards = shuffle([card, ...wrong])
+    q.optionCards = cards
+    q.options = cards.map((c) => side(c, answerSide).trim())
+    q.correctIndex = cards.indexOf(card)
   } else if (type === 'tf') {
-    const wrong = distractors(card, pool, answerSide, 1)
+    const wrong = distractorCards(card, pool, answerSide, 1)
     q.tfTrue = wrong.length === 0 || Math.random() < 0.5
-    q.shown = q.tfTrue ? side(card, answerSide) : wrong[0]
+    q.shownCard = q.tfTrue ? card : wrong[0]
+    q.shown = side(q.shownCard, answerSide).trim()
   }
   return q
 }

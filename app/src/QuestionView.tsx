@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Kbd } from './components'
 import { gradeWritten, type Question } from './quizgen'
 import { CardImage, RichText } from './rich'
+import WhyPanel from './WhyPanel'
 
 const SIDE_LABEL = { term: 'Term', definition: 'Definition' }
 
@@ -142,6 +143,17 @@ export default function QuestionView({ q, onAnswer }: { q: Question; onAnswer: (
             </div>
           )}
         </form>
+      )}
+
+      {result === false && (
+        <WhyPanel
+          card={q.card}
+          answerSide={q.answerSide}
+          chosen={
+            q.type === 'mc' ? q.options![picked!] : q.type === 'tf' ? (picked === 1 && !q.tfTrue ? q.shown : undefined) : typed.trim() || undefined
+          }
+          chosenCard={q.type === 'mc' ? q.optionCards?.[picked!] : q.type === 'tf' && picked === 1 && !q.tfTrue ? q.shownCard : undefined}
+        />
       )}
 
       {result !== null && (

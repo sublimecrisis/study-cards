@@ -36,6 +36,8 @@ export interface Card extends Base {
   defImage: ID | null
   /** Spaced-repetition memory state (FSRS); absent until first studied. */
   srs?: Srs | null
+  /** Saved AI explanations, keyed by the wrong answer they explain ('' = general). Synced with the card. */
+  explanations?: Record<string, string>
 }
 
 /** ts-fsrs card state with dates stored as epoch ms. */

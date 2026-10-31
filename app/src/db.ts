@@ -106,7 +106,7 @@ export async function addCards(setId: ID, drafts: CardDraft[]): Promise<ID[]> {
 
 export const updateCard = (
   id: ID,
-  patch: Partial<Pick<Card, 'term' | 'definition' | 'notes' | 'tags' | 'starred' | 'needsCheck' | 'termImage' | 'defImage'>>,
+  patch: Partial<Pick<Card, 'term' | 'definition' | 'notes' | 'tags' | 'starred' | 'needsCheck' | 'termImage' | 'defImage' | 'explanations'>>,
 ) => db.cards.update(id, touch(patch))
 
 export const deleteCard = (id: ID) => db.cards.update(id, touch({ deleted: 1 as const }))

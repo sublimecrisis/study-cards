@@ -1,122 +1,177 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { SessionBar } from '../components'
+import { db } from '../db'
+import { answer, start, type Item, type LearnState } from '../learnQueue'
 import QuestionView from '../QuestionView'
 import { makeQuestion, type Question } from '../quizgen'
 import { loadScope, readScope } from '../scope'
-import { recordOutcome, statusOf } from '../srs'
+import { isDue, recordOutcome, statusOf } from '../srs'
 import type { Card } from '../types'
 
-const ROUND = 7
-
-interface Track {
-  card: Card
-  stage: number // 0 = multiple choice, 1 = written, 2 = mastered
-  misses: number
-  seen: boolean
-}
+const CHECKPOINT = 10 // answers between progress check-ins
 
 /**
- * Quizlet-style Learn: rounds of 7. Each card goes multiple choice → typed answer;
- * a miss sends it back to the start of the line. Cards you already know well
- * (familiar/mastered) skip straight to typing.
+ * Learn, spaced-repetition style:
+ *  - what to learn: cards that are due first (the schedule says you're about to forget
+ *    them), then new cards. Cards you already know and aren't due are skipped.
+ *  - within the session: each card must be recalled twice with other cards in between;
+ *    misses come back quickly, correct answers come back later (see learnQueue.ts).
+ *  - afterwards: every learned card goes into the review schedule.
  */
 export default function Learn() {
   const [params] = useSearchParams()
   const scope = readScope(params)
-  const [tracks, setTracks] = useState<Track[] | null>(null)
-  const [pool, setPool] = useState<Card[]>([])
+  const [all, setAll] = useState<Card[] | null>(null)
   const [label, setLabel] = useState('')
+  const [includeAll, setIncludeAll] = useState(false)
   const [mcOnly, setMcOnly] = useState(false)
-  const [round, setRound] = useState<string[]>([]) // card ids in this round
-  const [pos, setPos] = useState(0)
+  const [st, setSt] = useState<LearnState | null>(null)
   const [q, setQ] = useState<Question | null>(null)
-  const [roundScore, setRoundScore] = useState({ right: 0, total: 0, n: 0 })
-  const [between, setBetween] = useState(false)
+  const [n, setN] = useState(0) // answers this session
+  const [right, setRight] = useState(0)
+  const [pause, setPause] = useState(false)
+  const [summary, setSummary] = useState<{ when: string; count: number }[] | null>(null)
   const started = useRef(Date.now())
 
   useEffect(() => {
     loadScope(scope).then(({ cards, label }) => {
-      setPool(cards)
+      setAll(cards)
       setLabel(label)
-      setTracks(cards.map((card) => ({ card, stage: ['familiar', 'mastered'].includes(statusOf(card)) ? 1 : 0, misses: 0, seen: false })))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.toString()])
 
-  const finalStage = mcOnly ? 1 : 2
-  const remaining = tracks?.filter((t) => t.stage < finalStage) ?? []
+  // Due cards first (most overdue first), then new ones; already-known, not-due cards only on request.
+  const plan = useMemo(() => {
+    if (!all) return null
+    const due = all.filter((c) => statusOf(c) !== 'new' && isDue(c)).sort((a, b) => a.srs!.due - b.srs!.due)
+    const fresh = all.filter((c) => statusOf(c) === 'new')
+    const rest = all.filter((c) => statusOf(c) !== 'new' && !isDue(c))
+    return { due, fresh, rest, items: [...due, ...fresh, ...(includeAll ? rest : [])] }
+  }, [all, includeAll])
 
-  const startRound = (ts: Track[]) => {
-    // Finish cards already in progress (missed ones first) before starting new ones; new ones keep set order.
-    const left = ts.filter((t) => t.stage < finalStage).sort((a, b) => Number(b.seen) - Number(a.seen) || b.misses - a.misses)
-    const ids = left.slice(0, ROUND).map((t) => t.card.id)
-    setRound(ids)
-    setPos(0)
-    setBetween(false)
-    setRoundScore((s) => ({ right: 0, total: 0, n: s.n + 1 }))
-    ask(ts, ids[0])
-  }
-
-  const ask = (ts: Track[], id?: string) => {
-    const t = ts.find((x) => x.card.id === id)
-    if (!t) return setQ(null)
-    const type = t.stage === 0 || mcOnly ? 'mc' : 'written'
-    setQ(makeQuestion(t.card, pool, type, type === 'mc' ? 'definition' : 'term'))
+  const ask = (s: LearnState) => {
+    const cur = s.queue[0]
+    if (!cur) return setQ(null)
+    const typed = cur.stage === 1 && !mcOnly
+    setQ(makeQuestion(cur.card, all!, typed ? 'written' : 'mc', typed ? 'term' : 'definition'))
     started.current = Date.now()
   }
 
-  useEffect(() => {
-    if (tracks && round.length === 0 && remaining.length) startRound(tracks)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tracks])
-
-  const onAnswer = (correct: boolean) => {
-    const id = round[pos]
-    const ms = Date.now() - started.current
-    const next = tracks!.map((t) => {
-      if (t.card.id !== id) return t
-      const stage = correct ? Math.min(t.stage + 1, 2) : 0
-      const nt = { ...t, stage, misses: t.misses + (correct ? 0 : 1), seen: true }
-      if (stage >= finalStage) recordOutcome(t.card, nt.misses === 0, 'learn', ms)
-      return nt
-    })
-    setTracks(next)
-    setRoundScore((s) => ({ ...s, right: s.right + (correct ? 1 : 0), total: s.total + 1 }))
-    if (pos + 1 < round.length) {
-      setPos(pos + 1)
-      ask(next, round[pos + 1])
-    } else {
-      setBetween(true)
-      setQ(null)
-    }
+  const begin = () => {
+    // Cards you've seen before start one step in: they only need the spaced (typed) recall.
+    const items: Item[] = plan!.items.map((card) => ({ card, stage: statusOf(card) === 'new' ? 0 : 1, misses: 0 }))
+    const s = start(items)
+    setSt(s)
+    setN(0)
+    setRight(0)
+    setSummary(null)
+    ask(s)
   }
 
-  if (!tracks) return null
-  const back = scope.kind === 'set' ? `/set/${scope.id}` : scope.kind === 'course' ? `/course/${scope.id}` : '/'
-  if (!tracks.length) return <p>No cards here. <Link to={back}>Back</Link></p>
-  const mastered = tracks.length - remaining.length
+  const onAnswer = (correct: boolean) => {
+    const ms = Date.now() - started.current
+    const { state, learned } = answer(st!, correct)
+    if (learned) recordOutcome(learned.card, learned.misses === 0, 'learn', ms)
+    setSt(state)
+    const nn = n + 1
+    setN(nn)
+    setRight((r) => r + (correct ? 1 : 0))
+    if (!state.queue.length) return finish(state)
+    if (nn % CHECKPOINT === 0) {
+      setPause(true)
+      setQ(null)
+    } else ask(state)
+  }
 
+  const finish = async (s: LearnState) => {
+    setQ(null)
+    // When will these come back? Read the freshly scheduled due dates.
+    await new Promise((r) => setTimeout(r, 300))
+    const fresh = await db.cards.bulkGet(s.learned.map((i) => i.card.id))
+    const day = 86_400_000
+    const buckets = new Map<string, number>()
+    for (const c of fresh) {
+      if (!c?.srs) continue
+      const d = Math.max(0, Math.round((c.srs.due - Date.now()) / day))
+      const when = d === 0 ? 'Later today' : d === 1 ? 'Tomorrow' : `In ${d} days`
+      buckets.set(when, (buckets.get(when) ?? 0) + 1)
+    }
+    setSummary([...buckets].map(([when, count]) => ({ when, count })))
+  }
+
+  if (!all || !plan) return null
+  const back = scope.kind === 'set' ? `/set/${scope.id}` : scope.kind === 'course' ? `/course/${scope.id}` : '/'
+  if (!all.length) return <p>No cards here. <Link to={back}>Back</Link></p>
+
+  const total = st ? st.learned.length + st.queue.length + st.pool.length : plan.items.length
   const header = (
     <>
       <div className="study-head">
         <Link to={back} className="crumb">← {label}</Link>
-        <span className="muted small">
-          {mastered} / {tracks.length} learned
-        </span>
+        {st && (
+          <span className="muted small">
+            {st.learned.length} / {total} learned
+          </span>
+        )}
       </div>
-      <SessionBar done={mastered} total={tracks.length} />
+      {st && <SessionBar done={st.learned.length} total={total} />}
     </>
   )
 
-  if (!remaining.length)
+  // ---- start screen ----
+  if (!st)
+    return (
+      <div className="study">
+        {header}
+        <div className="done-box">
+          <h1>Learn</h1>
+          <p className="muted">
+            Each card needs two correct answers, spaced apart, to count as learned. Misses come right back; learned cards join
+            your review schedule so they return just before you'd forget them.
+          </p>
+          <p>
+            <b>{plan.due.length}</b> due for review · <b>{plan.fresh.length}</b> new
+            {plan.rest.length ? <> · {plan.rest.length} already known (not due)</> : null}
+          </p>
+          {plan.rest.length > 0 && (
+            <label className="check small">
+              <input type="checkbox" checked={includeAll} onChange={(e) => setIncludeAll(e.target.checked)} /> Also practice cards that
+              aren't due yet
+            </label>
+          )}
+          <label className="check small">
+            <input type="checkbox" checked={mcOnly} onChange={(e) => setMcOnly(e.target.checked)} /> Multiple choice only (skip typing)
+          </label>
+          <button className="btn primary" onClick={begin} disabled={!plan.items.length} autoFocus>
+            {plan.items.length ? `Start — ${plan.items.length} cards` : 'Nothing due or new here'}
+          </button>
+          {!plan.items.length && <p className="muted small">Everything here is learned and not due yet. Tick the box above to practice anyway, or take a quiz.</p>}
+        </div>
+      </div>
+    )
+
+  // ---- finished ----
+  if (!st.queue.length)
     return (
       <div className="study">
         {header}
         <div className="done-box">
           <div className="big">🎉</div>
-          <h1>You learned all {tracks.length} cards</h1>
-          <p className="muted">They're now in your spaced-repetition schedule; Review will bring them back at the right time.</p>
+          <h1>You learned {st.learned.length} cards</h1>
+          <p className="muted">
+            {right} of {n} answers correct. They're now in your spaced-repetition schedule:
+          </p>
+          {summary && (
+            <ul className="plan">
+              {summary.map((b) => (
+                <li key={b.when}>
+                  <b>{b.when}:</b> {b.count} {b.count === 1 ? 'card' : 'cards'}
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="actions">
             <Link className="btn primary" to={`/quiz?${params}`}>Test yourself with a quiz</Link>
             <Link className="btn" to={back}>Done</Link>
@@ -125,18 +180,24 @@ export default function Learn() {
       </div>
     )
 
-  if (between)
+  // ---- checkpoint ----
+  if (pause)
     return (
       <div className="study">
         {header}
         <div className="done-box">
-          <h1>Round {roundScore.n} done</h1>
+          <h1>Check-in</h1>
           <p>
-            <b>{roundScore.right}</b> of {roundScore.total} correct · <b>{remaining.length}</b> cards to go
+            <b>{right}</b> of {n} correct so far · <b>{st.learned.length}</b> learned · <b>{st.queue.length + st.pool.length}</b> to go
           </p>
-          <button className="btn primary" autoFocus onClick={() => startRound(tracks)}>
-            Next round
-          </button>
+          <div className="actions">
+            <button className="btn primary" autoFocus onClick={() => (setPause(false), ask(st))}>
+              Keep going
+            </button>
+            <button className="btn" onClick={() => finish({ ...st, queue: [] }).then(() => setSt({ ...st, queue: [], pool: [] }))}>
+              Stop here
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -144,17 +205,12 @@ export default function Learn() {
   return (
     <div className="study">
       {header}
-      <label className="check small">
-        <input
-          type="checkbox"
-          checked={mcOnly}
-          onChange={(e) => {
-            setMcOnly(e.target.checked)
-          }}
-        />{' '}
-        Multiple choice only (skip typing)
-      </label>
-      {q && <QuestionView key={`${roundScore.n}-${pos}`} q={q} onAnswer={onAnswer} />}
+      {q && (
+        <>
+          <span className="muted small">{st.queue[0].stage === 0 ? 'First recall' : 'Spaced recall — one more to learn it'}</span>
+          <QuestionView key={n} q={q} onAnswer={onAnswer} />
+        </>
+      )}
     </div>
   )
 }

@@ -319,3 +319,11 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .feedback.wrong { background: var(--wrong-bg); color: var(--wrong); }
 .pw-form { display: grid; gap: 0.5rem; max-width: 420px; margin: 0.6rem 0; }
 .panel .pw-form:has(input[autocomplete="new-password"]) { border-top: 1px solid var(--border); padding-top: 0.8rem; margin-top: 1rem; }
+
+/* why-wrong explanations */
+.why { display: grid; gap: 0.5rem; justify-items: start; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.8rem 1rem; }
+.why p { margin: 0; }
+.why-term { font-weight: 600; }
+.why-ai { display: grid; gap: 0.3rem; background: var(--accent-soft); border-radius: 10px; padding: 0.7rem 0.9rem; width: 100%; }
+.why-label { font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.04em; }
+.btn.small { min-height: 2.1rem; padding: 0.3rem 0.8rem; font-size: 0.88rem; }
