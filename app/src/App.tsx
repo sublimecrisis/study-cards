@@ -1,4 +1,6 @@
 import Stats from './pages/Stats'
+import Focus from './pages/Focus'
+import FocusLayer, { FocusPill } from './FocusLayer'
 import { HashRouter, NavLink, Route, Routes } from 'react-router-dom'
 import Home from './pages/Home'
 import CoursePage from './pages/CoursePage'
@@ -29,8 +31,10 @@ export default function App() {
         <NavLink to="/" className="brand">
           Study Cards
         </NavLink>
+        <FocusPill />
       </header>
       <main className="page">
+        <FocusLayer />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/course/:id" element={<CoursePage />} />
@@ -39,6 +43,7 @@ export default function App() {
           <Route path="/import" element={<ImportPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/stats" element={<Stats />} />
+          <Route path="/focus" element={<Focus />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/study/review" element={<Review />} />
           <Route path="/study/learn" element={<Learn />} />

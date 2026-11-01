@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { ColumnChart, ScoreChart, type Col } from '../components'
 import { db } from '../db'
 import { startOfDay, statusOf } from '../srs'
+import type { BlockSummary } from '../focus'
 
 const DAY = 86_400_000
 const short = (t: number) => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -20,7 +21,8 @@ export default function Stats() {
       db.reviews.where('at').above(Date.now() - 60 * DAY).toArray(),
       db.quizzes.orderBy('at').toArray(),
     ])
-    return { courses, sets, cards, reviews, quizzes }
+    const blocks = ((await db.meta.get('focus-history'))?.value as BlockSummary[] | undefined) ?? []
+    return { courses, sets, cards, reviews, quizzes, blocks }
   })
   if (!data) return null
 
@@ -148,6 +150,31 @@ export default function Stats() {
           <p className="muted small">No answers in the last 14 days yet.</p>
         )}
         {chapters.length > tried.length && <p className="muted small">{chapters.length - tried.length} chapters not studied in the last 14 days.</p>}
+      </section>
+
+      <section className="chart">
+        <strong>Focus blocks</strong> <span className="muted small">accuracy per round: watch for a drop late in the block</span>
+        {data.blocks.length ? (
+          <table className="tbl small">
+            <tbody>
+              {[...data.blocks]
+                .reverse()
+                .slice(0, 8)
+                .map((b) => (
+                  <tr key={b.id}>
+                    <td>{short(b.at)}</td>
+                    <td>{b.minutesFocused} min</td>
+                    <td>{b.accuracy === null ? '—' : pct(b.accuracy)}</td>
+                    <td className="muted">{b.rounds.map((r) => `R${r.round} ${r.accuracy === null ? '—' : pct(r.accuracy)}`).join(' · ')}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="muted small">
+            Finish a block on the <Link to="/focus">Focus</Link> page to see how your accuracy holds up round by round.
+          </p>
+        )}
       </section>
 
       {exams.length ? (

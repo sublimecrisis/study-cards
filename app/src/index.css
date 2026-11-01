@@ -425,3 +425,37 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .acc-sets li a { grid-column: 1 / -1; }
 .acc-sets .mini-bar { width: 100%; }
 .acc-sets a { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* focus timer */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+@media (min-width: 760px) { .topbar { justify-content: flex-start; } }
+.focus-pill { font-size: 0.82rem; font-weight: 600; padding: 0.3rem 0.7rem; border-radius: 999px; background: var(--surface-2); color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.focus-pill.idle { color: var(--muted); font-weight: 500; }
+.focus-pill.on { background: var(--accent-soft); color: var(--accent); }
+.focus-pill.rest { background: var(--right-bg); color: var(--right); }
+.focus-pill.paused { opacity: 0.7; }
+.focus-page h2 { margin-top: 0; }
+.field-label { color: var(--muted); margin: 0.8rem 0 0.3rem; }
+.focus-now { text-align: center; }
+.focus-phase { font-weight: 600; color: var(--accent); }
+.focus-now.rest .focus-phase { color: var(--right); }
+.focus-clock { font-size: 3.4rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; margin: 0.3rem 0; }
+.focus-now .actions { justify-content: center; }
+.focus-now.rest .goal-bar span { background: var(--right); }
+.focus-plan summary { cursor: pointer; font-weight: 600; }
+.focus-plan ol { list-style: none; padding: 0; margin: 0.5rem 0 0; display: grid; gap: 0.15rem; }
+.focus-plan li { display: flex; gap: 0.8rem; padding: 0.3rem 0.5rem; border-radius: 8px; font-size: 0.9rem; }
+.focus-plan li.break, .focus-plan li.long { color: var(--right); }
+.focus-plan li.long { font-weight: 600; }
+.focus-plan li.now { background: var(--accent-soft); }
+.focus-plan li.past { opacity: 0.45; }
+.focus-plan-time { width: 3.6rem; font-variant-numeric: tabular-nums; }
+.focus-summary li { grid-template-columns: 70px minmax(0, 1fr) 90px; }
+.break-screen { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: grid; place-items: center; padding: 1rem; overflow-y: auto; }
+.break-card { max-width: 420px; width: 100%; text-align: center; }
+.break-kind { font-weight: 700; color: var(--right); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.85rem; }
+.break-clock { font-size: 4rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; margin: 0.4rem 0; }
+.break-tips { text-align: left; margin: 1rem auto; padding-left: 1.2rem; display: grid; gap: 0.4rem; }
+.break-card .actions { justify-content: center; }
+.focus-banner { display: flex; flex-wrap: wrap; gap: 0.5rem 0.8rem; align-items: center; justify-content: space-between; background: var(--warn-bg); color: var(--warn-text); border-radius: var(--radius); padding: 0.6rem 0.8rem; margin-bottom: 0.8rem; font-size: 0.9rem; }
+.focus-banner-actions { display: flex; gap: 0.6rem; align-items: center; }
