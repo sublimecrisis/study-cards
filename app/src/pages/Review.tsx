@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Kbd, SessionBar } from '../components'
 import WhyPanel from '../WhyPanel'
 import { CardImage, RichText } from '../rich'
+import Diagram from '../Diagram'
 import { loadScope, readScope, scopeKey } from '../scope'
 import { isDue, preview, Rating, rate } from '../srs'
 import { getSettings, loadDayStats } from '../stats'
@@ -16,11 +17,15 @@ const BUTTONS: { r: Grade; label: string; cls: string }[] = [
   { r: Rating.Easy, label: 'Easy', cls: 'easy' },
 ]
 
-export function Side({ card, side }: { card: Card; side: 'term' | 'definition' }) {
+export function Side({ card, side, revealed }: { card: Card; side: 'term' | 'definition'; revealed?: boolean }) {
   return (
     <div className="face-content">
       <RichText text={side === 'term' ? card.term : card.definition} />
-      <CardImage id={side === 'term' ? card.termImage : card.defImage} className="face-img" />
+      {card.occlusion ? (
+        <Diagram card={card} revealed={revealed ?? side === 'definition'} />
+      ) : (
+        <CardImage id={side === 'term' ? card.termImage : card.defImage} className="face-img" />
+      )}
       {side === 'definition' && card.notes && <RichText className="notes" text={card.notes} />}
     </div>
   )
@@ -118,11 +123,11 @@ export default function Review() {
       <SessionBar done={done} total={total} />
       <div className={`face ${shown ? 'revealed' : ''}`} onClick={() => setShown(true)}>
         {card.srs ? null : <span className="badge">New</span>}
-        <Side card={card} side="term" />
+        <Side card={card} side="term" revealed={shown} />
         {shown && (
           <>
             <hr />
-            <Side card={card} side="definition" />
+            {card.occlusion ? <RichText text={card.definition} className="dg-answer" /> : <Side card={card} side="definition" />}
           </>
         )}
       </div>

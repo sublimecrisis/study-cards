@@ -84,7 +84,7 @@ export async function deleteSet(id: ID) {
 }
 
 // ---- cards ----
-export async function addCards(setId: ID, drafts: CardDraft[]): Promise<ID[]> {
+export async function addCards(setId: ID, drafts: (CardDraft & Partial<Pick<Card, 'termImage' | 'defImage' | 'occlusion'>>)[]): Promise<ID[]> {
   const last = await db.cards.where('[setId+position]').between([setId, Dexie.minKey], [setId, Dexie.maxKey]).last()
   let pos = last ? last.position + 1 : 0
   const cards: Card[] = drafts.map((d) => ({
@@ -97,8 +97,9 @@ export async function addCards(setId: ID, drafts: CardDraft[]): Promise<ID[]> {
     tags: d.tags ?? [],
     starred: 0,
     needsCheck: d.needsCheck ?? 0,
-    termImage: null,
-    defImage: null,
+    termImage: d.termImage ?? null,
+    defImage: d.defImage ?? null,
+    occlusion: d.occlusion ?? null,
   }))
   await db.cards.bulkAdd(cards)
   return cards.map((c) => c.id)
@@ -106,7 +107,7 @@ export async function addCards(setId: ID, drafts: CardDraft[]): Promise<ID[]> {
 
 export const updateCard = (
   id: ID,
-  patch: Partial<Pick<Card, 'term' | 'definition' | 'notes' | 'tags' | 'starred' | 'needsCheck' | 'termImage' | 'defImage' | 'explanations'>>,
+  patch: Partial<Pick<Card, 'term' | 'definition' | 'notes' | 'tags' | 'starred' | 'needsCheck' | 'termImage' | 'defImage' | 'explanations' | 'occlusion'>>,
 ) => db.cards.update(id, touch(patch))
 
 export const deleteCard = (id: ID) => db.cards.update(id, touch({ deleted: 1 as const }))

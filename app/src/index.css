@@ -329,3 +329,23 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .btn.small { min-height: 2.1rem; padding: 0.3rem 0.8rem; font-size: 0.88rem; }
 /* Room below the question so the why-panel can scroll clear of the sticky Continue bar */
 .question { padding-bottom: 4.5rem; }
+
+/* label-the-diagram cards */
+.diagram { position: relative; display: block; width: min(100%, 520px); margin: 0 auto; line-height: 0; background: #fff; border-radius: 10px; overflow: hidden; }
+/* Size by width only: a max-height would shrink the image but not its box, and the overlays would drift. */
+.diagram img { width: 100%; height: auto; display: block; }
+.dg-other { position: absolute; border: 1.5px dashed rgb(79 70 229 / 35%); border-radius: 4px; }
+.dg-target { position: absolute; background: var(--accent); border-radius: 4px; color: #fff; font: 700 clamp(0.7rem, 2.5vw, 1rem)/1 system-ui; display: grid; place-items: center; box-shadow: 0 0 0 2px #fff; }
+.dg-target.revealed { background: transparent; border: 3px solid #e5a100; box-shadow: none; }
+.dg-label { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); background: #1c1f2e; color: #fff; padding: 0.3rem 0.7rem; border-radius: 999px; font: 600 0.85rem/1.2 system-ui; white-space: nowrap; max-width: 95%; overflow: hidden; text-overflow: ellipsis; }
+.diagram.small-dg { width: min(100%, 280px); margin: 0; }
+.dg-editor { position: relative; line-height: 0; background: #fff; border-radius: 10px; overflow: hidden; touch-action: none; cursor: crosshair; user-select: none; max-width: 100%; }
+.dg-editor img { width: 100%; display: block; pointer-events: none; }
+.dg-box { position: absolute; background: rgb(79 70 229 / 75%); border: 2px solid #fff; border-radius: 4px; color: #fff; font: 700 0.8rem/1 system-ui; display: grid; place-items: center; cursor: pointer; }
+.dg-box.sel { background: rgb(229 161 0 / 85%); }
+.dg-box.drafting { background: rgb(79 70 229 / 35%); border-style: dashed; }
+.dg-parts { display: grid; gap: 0.4rem; padding-left: 1.6rem; margin: 0; }
+.dg-parts li { display: flex; gap: 0.4rem; align-items: center; }
+.dg-parts li input { flex: 1; }
+.dg-parts li.sel input { outline: 2px solid #e5a100; }
+.dg-answer { font-weight: 700; font-size: 1.3rem; }

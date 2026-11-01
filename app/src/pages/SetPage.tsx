@@ -88,6 +88,9 @@ export default function SetPage() {
         <Link to={`/set/${id}/edit`} className="btn">
           Edit / add cards
         </Link>
+        <Link to={`/set/${id}/diagram`} className="btn">
+          + Label-the-diagram
+        </Link>
         <button className="btn" onClick={rename}>
           Rename
         </button>

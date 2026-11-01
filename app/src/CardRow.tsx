@@ -1,5 +1,7 @@
+import { Link } from 'react-router-dom'
 import { updateCard } from './db'
 import { CardImage, RichText } from './rich'
+import Diagram from './Diagram'
 import { STATUS_LABEL, statusOf } from './srs'
 import type { Card } from './types'
 
@@ -14,7 +16,16 @@ export default function CardRow({ card, context }: { card: Card; context?: React
             <i className={`swatch seg-${statusOf(card)}`} /> {STATUS_LABEL[statusOf(card)]}
           </span>
         )}
-        <CardImage id={card.termImage} />
+        {card.occlusion ? (
+          <>
+            <Diagram card={card} revealed className="small-dg" />
+            <Link className="small" to={`/set/${card.setId}/diagram/${card.occlusion.group}`}>
+              Edit diagram
+            </Link>
+          </>
+        ) : (
+          <CardImage id={card.termImage} />
+        )}
       </div>
       <div className="card-side def">
         <RichText text={card.definition} />

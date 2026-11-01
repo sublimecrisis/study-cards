@@ -38,6 +38,22 @@ export interface Card extends Base {
   srs?: Srs | null
   /** Saved AI explanations, keyed by the wrong answer they explain ('' = general). Synced with the card. */
   explanations?: Record<string, string>
+  /** "Label the diagram" card: termImage is the diagram, `box` is the part to name (the definition is its label). */
+  occlusion?: Occlusion | null
+}
+
+/** A rectangle on an image, as fractions (0–1) of its width/height so it survives resizing. */
+export interface Box {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+export interface Occlusion {
+  group: string // all cards made from the same diagram share this
+  box: Box // the part this card asks about
+  others: Box[] // the diagram's other labelled parts (left visible for context)
 }
 
 /** ts-fsrs card state with dates stored as epoch ms. */

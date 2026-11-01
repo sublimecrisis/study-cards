@@ -10,6 +10,7 @@ import Review from './pages/Review'
 import Learn from './pages/Learn'
 import Flashcards from './pages/Flashcards'
 import Quiz from './pages/Quiz'
+import DiagramEditor from './pages/DiagramEditor'
 
 const NAV = [
   { to: '/', label: 'Home', icon: '⌂' },
@@ -39,6 +40,8 @@ export default function App() {
           <Route path="/study/learn" element={<Learn />} />
           <Route path="/study/flashcards" element={<Flashcards />} />
           <Route path="/quiz" element={<Quiz />} />
+          <Route path="/set/:id/diagram" element={<DiagramEditor />} />
+          <Route path="/set/:id/diagram/:group" element={<DiagramEditor />} />
         </Routes>
       </main>
       <nav className="tabbar">

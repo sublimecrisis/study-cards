@@ -45,7 +45,7 @@ export function distractorCards(card: Card, pool: Card[], s: 'term' | 'definitio
       const t = side(c, s).trim()
       let shared = 0
       for (const w of words(t)) if (rw.has(w)) shared++
-      const tags = c.tags.filter((x) => card.tags.includes(x)).length
+      const tags = c.tags.filter((x) => card.tags.includes(x)).length + (card.occlusion && c.occlusion?.group === card.occlusion.group ? 6 : 0)
       const len = Math.abs(t.length - right.length) / Math.max(t.length, right.length, 1)
       return { c, t, score: shared * 2 + tags + (1 - len) * 2 + Math.random() * 1.5 }
     })
@@ -62,8 +62,13 @@ export function distractorCards(card: Card, pool: Card[], s: 'term' | 'definitio
 
 export function makeQuestion(card: Card, pool: Card[], type: QType, answerWith: AnswerWith): Question {
   // In mixed mode, typed answers are always the (short) term — typing whole definitions isn't a fair test.
-  const answerSide: 'term' | 'definition' =
-    answerWith === 'both' ? (type === 'written' || Math.random() < 0.5 ? 'term' : 'definition') : answerWith
+  const answerSide: 'term' | 'definition' = card.occlusion
+    ? 'definition' // a diagram card always asks "name the covered part"
+    : answerWith === 'both'
+      ? type === 'written' || Math.random() < 0.5
+        ? 'term'
+        : 'definition'
+      : answerWith
   const promptSide = answerSide === 'term' ? 'definition' : 'term'
   const q: Question = { card, type, promptSide, answerSide }
   if (type === 'mc') {

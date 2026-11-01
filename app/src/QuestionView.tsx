@@ -3,6 +3,7 @@ import { Kbd } from './components'
 import { gradeWritten, type Question } from './quizgen'
 import { CardImage, RichText } from './rich'
 import WhyPanel from './WhyPanel'
+import Diagram from './Diagram'
 
 const SIDE_LABEL = { term: 'Term', definition: 'Definition' }
 
@@ -55,7 +56,7 @@ export default function QuestionView({ q, onAnswer }: { q: Question; onAnswer: (
       <div className="q-prompt">
         <span className="q-label">{SIDE_LABEL[q.promptSide]}</span>
         <RichText text={promptText} />
-        <CardImage id={promptImg} className="face-img" />
+        {q.card.occlusion ? <Diagram card={q.card} revealed={result !== null} /> : <CardImage id={promptImg} className="face-img" />}
       </div>
 
       {q.type === 'mc' && (
