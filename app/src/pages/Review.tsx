@@ -4,7 +4,7 @@ import { Kbd, SessionBar } from '../components'
 import WhyPanel from '../WhyPanel'
 import { CardImage, RichText } from '../rich'
 import Diagram from '../Diagram'
-import { loadScope, readScope, scopeKey } from '../scope'
+import { loadScope, readScope } from '../scope'
 import { isDue, preview, Rating, rate } from '../srs'
 import { getSettings, loadDayStats } from '../stats'
 import type { Card } from '../types'
@@ -38,6 +38,7 @@ export default function Review() {
   const scope = readScope(params)
   const [queue, setQueue] = useState<Card[] | null>(null)
   const [label, setLabel] = useState('')
+  const [boost, setBoost] = useState<{ on: boolean; ids: Set<string> }>({ on: false, ids: new Set() })
   const [shown, setShown] = useState(false)
   const [done, setDone] = useState(0)
   const [total, setTotal] = useState(0)
@@ -54,6 +55,7 @@ export default function Review() {
       const boosted: Card[] = []
       if (settings.examBoost) for (const [courseId, exam] of exams) boosted.push(...examBoost(cards.filter((c) => setCourse.get(c.setId) === courseId && !c.occlusion), exam))
       due.push(...boosted.slice(0, 150))
+      setBoost({ on: settings.examBoost && exams.size > 0, ids: new Set(boosted.slice(0, 150).map((c) => c.id)) })
       const fresh = cards.filter((c) => !c.srs || c.srs.state === 0).slice(0, Math.max(0, settings.newPerDay - day.newToday))
       // Mix new cards in among reviews rather than all at the end.
       const q: Card[] = []
@@ -126,11 +128,14 @@ export default function Review() {
     <div className="study">
       <div className="study-head">
         <Link to={back} className="crumb">← {label}</Link>
-        <span className="muted small">{queue.length} left{scopeKey(scope) === 'all' ? '' : ''}</span>
+        <span className="muted small">
+          {boost.on && <span className="boost-pill" title="Exam boost is adding cards you'd likely forget by exam day">⚡ Boost on</span>} {queue.length} left
+        </span>
       </div>
       <SessionBar done={done} total={total} />
       <div className={`face ${shown ? 'revealed' : ''}`} onClick={() => setShown(true)}>
         {card.srs ? null : <span className="badge">New</span>}
+        {boost.ids.has(card.id) && <span className="badge boost">⚡ Exam boost</span>}
         <Side card={card} side="term" revealed={shown} />
         {shown && (
           <>

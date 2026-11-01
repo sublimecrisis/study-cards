@@ -50,7 +50,10 @@ export default function ExamPanel({ course, sets, cards, settings }: { course: C
     <section className="panel exam">
       <div className="exam-head">
         <div>
-          <div className="exam-days">{days === 0 ? 'Exam today' : `${days} day${days === 1 ? '' : 's'}`}</div>
+          <div className="exam-days">
+            {days === 0 ? 'Exam today' : `${days} day${days === 1 ? '' : 's'}`}{' '}
+            <span className={`boost-pill ${settings.examBoost ? '' : 'off'}`}>{settings.examBoost ? '⚡ Boost on' : 'Boost off'}</span>
+          </div>
           <div className="muted small">
             until your exam ·{' '}
             <input

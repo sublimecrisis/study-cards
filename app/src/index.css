@@ -394,3 +394,11 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .match-row.wrong { border-color: var(--wrong); background: var(--wrong-bg); }
 .match-left { font-size: 0.95rem; }
 .match-row select { width: 100%; }
+
+/* exam boost indicator */
+.boost-pill { display: inline-block; vertical-align: middle; font-size: 0.75rem; font-weight: 600; line-height: 1; padding: 0.3rem 0.55rem; border-radius: 999px; background: #fef3c7; color: #92400e; }
+.boost-pill.off { background: var(--border, #e5e7eb); color: var(--muted, #6b7280); font-weight: 500; }
+.badge.boost { background: #fef3c7; color: #92400e; }
+@media (prefers-color-scheme: dark) {
+  .boost-pill, .badge.boost { background: #451a03; color: #fcd34d; }
+}
