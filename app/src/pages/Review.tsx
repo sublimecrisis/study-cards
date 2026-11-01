@@ -52,7 +52,7 @@ export default function Review() {
       const exams = new Map((await db.courses.toArray()).filter((c) => c.examDate && daysUntil(c.examDate) >= 0).map((c) => [c.id, c.examDate!]))
       const setCourse = new Map([...sets.values()].map((s) => [s.id, s.courseId]))
       const boosted: Card[] = []
-      for (const [courseId, exam] of exams) boosted.push(...examBoost(cards.filter((c) => setCourse.get(c.setId) === courseId && !c.occlusion), exam))
+      if (settings.examBoost) for (const [courseId, exam] of exams) boosted.push(...examBoost(cards.filter((c) => setCourse.get(c.setId) === courseId && !c.occlusion), exam))
       due.push(...boosted.slice(0, 150))
       const fresh = cards.filter((c) => !c.srs || c.srs.state === 0).slice(0, Math.max(0, settings.newPerDay - day.newToday))
       // Mix new cards in among reviews rather than all at the end.

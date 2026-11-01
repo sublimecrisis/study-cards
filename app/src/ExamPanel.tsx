@@ -35,7 +35,7 @@ export default function ExamPanel({ course, sets, cards, settings }: { course: C
   const focus = ess.length ? ess : studyable
   const r = readiness(focus, exam)
   const dueNow = studyable.filter((c) => isDue(c)).length
-  const boost = examBoost(studyable, exam).length
+  const boost = settings.examBoost ? examBoost(studyable, exam).length : 0
   const need = newPerDayNeeded(focus, exam)
   const perSet = sets
     .map((s) => {
@@ -43,7 +43,7 @@ export default function ExamPanel({ course, sets, cards, settings }: { course: C
       return { s, n: cs.length, r: readiness(cs, exam) }
     })
     .filter((x) => x.n)
-    .sort((a, b) => a.r - b.r)
+    .sort((a, b) => a.s.name.localeCompare(b.s.name, undefined, { numeric: true })) // Ch 1, Ch 2 … Ch 23
   const q = scopeQuery({ kind: 'course', id: course.id, filter: ess.length ? 'tag:essentials' : 'all' })
 
   return (
@@ -89,6 +89,10 @@ export default function ExamPanel({ course, sets, cards, settings }: { course: C
         </li>
         <li>Take a practice exam every few days and drill your weakest cards.</li>
       </ul>
+      <label className="check small">
+        <input type="checkbox" checked={settings.examBoost} onChange={(e) => saveSettings({ examBoost: e.target.checked })} /> Exam boost: add cards
+        you'd likely forget by exam day to Review
+      </label>
       <div className="actions">
         <Link className="btn primary" to={`/study/review?${q}`}>
           Exam review
@@ -102,13 +106,13 @@ export default function ExamPanel({ course, sets, cards, settings }: { course: C
       </div>
 
       <details>
-        <summary className="small">Readiness by chapter (weakest first)</summary>
+        <summary className="small">Readiness by chapter</summary>
         <ul className="exam-sets">
           {perSet.map(({ s, n, r: sr }) => (
             <li key={s.id}>
               <Link to={`/set/${s.id}`}>{s.name}</Link>
               <span className="mini-bar">
-                <span style={{ width: pct(sr) }} />
+                <span style={{ width: pct(sr), background: sr >= 0.7 ? 'var(--right)' : sr >= 0.4 ? '#ca8a04' : 'var(--wrong)' }} />
               </span>
               <span className="muted small">
                 {pct(sr)} · {n}

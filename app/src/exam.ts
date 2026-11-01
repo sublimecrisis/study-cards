@@ -14,15 +14,20 @@ export function readiness(cards: Card[], exam: number) {
 }
 
 /**
- * Exam boost: studied cards that aren't due yet but that you'd probably have
- * forgotten by exam day (recall below `target`). Review pulls these forward,
- * weakest first, so nothing slips through the gap before the exam.
+ * Exam boost: studied cards whose next scheduled review lands AFTER the exam, but
+ * that you'd probably have forgotten by exam day (recall below `target`). Review
+ * pulls these forward so nothing slips through the gap.
+ *
+ * Cards already scheduled before the exam are left alone (they'll come back on
+ * their own), and so is anything reviewed today: otherwise a card you just rated
+ * "3 days" would be pulled straight back into the session.
  */
 export function examBoost(cards: Card[], exam: number, target = 0.85, now = Date.now()) {
   if (daysUntil(exam, now) < 0) return []
   const when = startOfDay(exam) + 8 * 3_600_000
+  const today = startOfDay(now)
   return cards
-    .filter((c) => statusOf(c) !== 'new' && !isDue(c, now))
+    .filter((c) => statusOf(c) !== 'new' && !isDue(c, now) && c.srs!.due > when && (c.srs!.last_review ?? 0) < today)
     .map((c) => ({ c, r: retrievabilityAt(c, when) }))
     .filter((x) => x.r < target)
     .sort((a, b) => a.r - b.r)

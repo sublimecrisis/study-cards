@@ -25,8 +25,11 @@ describe('exam readiness', () => {
     const fading = { state: 2 as const, stability: 2, difficulty: 5, scheduled_days: 2, reps: 2, lapses: 0, learning_steps: 0, last_review: now, due: now + 2 * DAY }
     // Strong memory: still well remembered on exam day.
     const strong = { ...fading, stability: 60, scheduled_days: 60, due: now + 60 * DAY }
-    const boosted = examBoost([card('x', { srs: fading }), card('y', { srs: strong }), card('new')], exam, 0.85, now)
-    expect(boosted.map((c) => c.id)).toEqual(['x'])
+    // Reviewed today and due in 2 days (before the exam): must NOT come back today.
+    expect(examBoost([card('x', { srs: fading }), card('y', { srs: strong }), card('new')], exam, 0.85, now)).toEqual([])
+    // Reviewed a week ago, 10-day interval → next due after the exam, recall on exam day low → boosted.
+    const lapsing = { ...fading, stability: 3, scheduled_days: 10, last_review: now - 7 * DAY, due: now + 3 * DAY + 8 * DAY }
+    expect(examBoost([card('z', { srs: lapsing }), card('y', { srs: strong })], exam, 0.85, now).map((c) => c.id)).toEqual(['z'])
   })
   it('new cards per day to see everything before the exam', () => {
     expect(newPerDayNeeded([card('1'), card('2'), card('3'), card('4'), card('5'), card('6'), card('7'), card('8'), card('9')], exam, now)).toBe(2)

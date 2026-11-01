@@ -6,8 +6,9 @@ import type { Card, ReviewLog } from './types'
 export interface Settings {
   dailyGoal: number // cards studied per day
   newPerDay: number // new cards Review mode introduces per day
+  examBoost: boolean // Review pulls forward cards that would fade before an exam
 }
-export const DEFAULT_SETTINGS: Settings = { dailyGoal: 20, newPerDay: 20 }
+export const DEFAULT_SETTINGS: Settings = { dailyGoal: 20, newPerDay: 20, examBoost: true }
 
 export async function getSettings(): Promise<Settings> {
   const m = await db.meta.get('settings')
