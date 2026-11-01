@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom'
 import { ProgressBar } from '../components'
 import { addCourse, db } from '../db'
 import { breakdown, estMinutes, getSettings, loadDayStats } from '../stats'
+import { daysUntil } from '../exam'
+import { scopeQuery } from '../scope'
 import type { Card } from '../types'
 
 export default function Home() {
@@ -24,13 +26,14 @@ export default function Home() {
     const due = active.reduce((n, c) => n + c.b.due, 0)
     const unseen = active.reduce((n, c) => n + c.b.new, 0)
     const freshToday = Math.min(unseen, Math.max(0, settings.newPerDay - day.newToday))
-    return { rows, due, freshToday, settings, day }
+    const exams = rows.filter((c) => c.examDate && daysUntil(c.examDate) >= 0).sort((a, b) => a.examDate! - b.examDate!)
+    return { rows, due, freshToday, settings, day, exams }
   })
   const [name, setName] = useState('')
   const [showArchived, setShowArchived] = useState(false)
 
   if (!data) return null
-  const { rows, due, freshToday, settings, day } = data
+  const { rows, due, freshToday, settings, day, exams } = data
   const visible = rows.filter((c) => showArchived || !c.archived)
   const archivedCount = rows.filter((c) => c.archived).length
   const goalPct = Math.min(100, (day.studiedToday / settings.dailyGoal) * 100)
@@ -44,6 +47,24 @@ export default function Home() {
 
   return (
     <>
+      {exams.map((c) => {
+        const d = daysUntil(c.examDate!)
+        return (
+          <div key={c.id} className="exam-chip">
+            <Link to={`/course/${c.id}`}>
+              🎯 <b>{c.name}</b> exam {d === 0 ? 'today' : d === 1 ? 'tomorrow' : `in ${d} days`}
+            </Link>
+            <span className="exam-chip-actions">
+              <Link to={`/study/review?${scopeQuery({ kind: 'course', id: c.id, filter: 'all' })}`} className="btn small primary">
+                Exam review
+              </Link>
+              <Link to={`/exam?${scopeQuery({ kind: 'course', id: c.id, filter: 'all' })}`} className="btn small">
+                Practice exam
+              </Link>
+            </span>
+          </div>
+        )
+      })}
       {rows.length > 0 && (
         <section className="today">
           <div className="today-main">

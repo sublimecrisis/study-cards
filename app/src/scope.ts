@@ -1,11 +1,12 @@
 import { db } from './db'
+import { weakest } from './exam'
 import type { Card, CardSet, Course } from './types'
 
 /** What to study: everything, one course, or one set — optionally narrowed by a filter. */
 export interface Scope {
   kind: 'all' | 'course' | 'set'
   id: string
-  filter: 'all' | 'starred' | 'check' | `tag:${string}`
+  filter: 'all' | 'starred' | 'check' | 'weak' | `tag:${string}`
 }
 
 export function readScope(params: URLSearchParams): Scope {
@@ -19,7 +20,7 @@ export const scopeQuery = (s: Scope) =>
 export const scopeKey = (s: Pick<Scope, 'kind' | 'id'>) => (s.kind === 'all' ? 'all' : `${s.kind}:${s.id}`)
 
 export const filterLabel = (f: Scope['filter']) =>
-  f === 'starred' ? 'Starred' : f === 'check' ? 'Needs check' : f.startsWith('tag:') ? f.slice(4)[0].toUpperCase() + f.slice(5) : ''
+  f === 'starred' ? 'Starred' : f === 'check' ? 'Needs check' : f === 'weak' ? 'Weakest' : f.startsWith('tag:') ? f.slice(4)[0].toUpperCase() + f.slice(5) : ''
 
 export interface Loaded {
   cards: Card[]
@@ -44,6 +45,7 @@ export async function loadScope(s: Scope): Promise<Loaded> {
   if (s.filter === 'starred') cards = cards.filter((c) => c.starred)
   else if (s.filter === 'check') cards = cards.filter((c) => c.needsCheck)
   else if (s.filter.startsWith('tag:')) cards = cards.filter((c) => c.tags.includes(s.filter.slice(4)))
+  else if (s.filter === 'weak') cards = weakest(cards, await db.reviews.where('at').above(Date.now() - 60 * 86_400_000).toArray(), 40)
   const base = s.kind === 'set' ? (setMap.get(s.id)?.name ?? 'Set') : s.kind === 'course' ? (courses.get(s.id)?.name ?? 'Course') : 'All courses'
   const fl = filterLabel(s.filter)
   return { cards, sets: setMap, label: fl ? `${base} · ${fl}` : base }

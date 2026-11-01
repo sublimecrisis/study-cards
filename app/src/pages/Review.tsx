@@ -9,6 +9,8 @@ import { isDue, preview, Rating, rate } from '../srs'
 import { getSettings, loadDayStats } from '../stats'
 import type { Card } from '../types'
 import type { Grade } from 'ts-fsrs'
+import { daysUntil, examBoost } from '../exam'
+import { db } from '../db'
 
 const BUTTONS: { r: Grade; label: string; cls: string }[] = [
   { r: Rating.Again, label: 'Again', cls: 'again' },
@@ -43,9 +45,15 @@ export default function Review() {
 
   useEffect(() => {
     ;(async () => {
-      const { cards, label } = await loadScope(scope)
+      const { cards, label, sets } = await loadScope(scope)
       const [settings, day] = await Promise.all([getSettings(), loadDayStats()])
       const due = cards.filter((c) => isDue(c)).sort((a, b) => a.srs!.due - b.srs!.due)
+      // Exam boost: for courses with an upcoming exam, pull forward cards that would fade by exam day.
+      const exams = new Map((await db.courses.toArray()).filter((c) => c.examDate && daysUntil(c.examDate) >= 0).map((c) => [c.id, c.examDate!]))
+      const setCourse = new Map([...sets.values()].map((s) => [s.id, s.courseId]))
+      const boosted: Card[] = []
+      for (const [courseId, exam] of exams) boosted.push(...examBoost(cards.filter((c) => setCourse.get(c.setId) === courseId && !c.occlusion), exam))
+      due.push(...boosted.slice(0, 150))
       const fresh = cards.filter((c) => !c.srs || c.srs.state === 0).slice(0, Math.max(0, settings.newPerDay - day.newToday))
       // Mix new cards in among reviews rather than all at the end.
       const q: Card[] = []

@@ -350,3 +350,33 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .dg-parts li.sel input { outline: 2px solid #e5a100; }
 .dg-answer { font-weight: 700; font-size: 1.3rem; }
 .dg-same { position: absolute; background: #9aa3b5; border-radius: 4px; box-shadow: 0 0 0 2px #fff; }
+
+/* exam panel */
+.exam h3 { font-size: 0.95rem; margin: 0.9rem 0 0.3rem; }
+.exam-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; }
+.exam-days { font-size: 2rem; font-weight: 800; line-height: 1.1; }
+.exam-ready { text-align: right; }
+.exam-pct { font-size: 2rem; font-weight: 800; color: var(--accent); line-height: 1.1; }
+.goal-bar.wide { width: 100%; height: 8px; margin: 0.5rem 0; display: block; }
+.exam-plan { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.3rem; font-size: 0.92rem; }
+.exam-sets { list-style: none; padding: 0; margin: 0.5rem 0 0; display: grid; gap: 0.35rem; }
+.exam-sets li { display: grid; grid-template-columns: minmax(0, 1fr) 90px 80px; gap: 0.6rem; align-items: center; font-size: 0.88rem; }
+.mini-bar { height: 6px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.mini-bar span { display: block; height: 100%; background: var(--seg-familiar); }
+.inline-date { padding: 0.1rem 0.3rem; font-size: 0.85rem; }
+.exam-chip { display: flex; justify-content: space-between; align-items: center; gap: 0.8rem; flex-wrap: wrap; background: var(--accent-soft); color: var(--text); border: 1px solid var(--accent); border-radius: var(--radius); padding: 0.7rem 1rem; margin-bottom: 0.8rem; }
+.exam-chip-actions { display: flex; gap: 0.4rem; }
+
+/* practice exam */
+.timer { font-weight: 700; font-variant-numeric: tabular-nums; }
+.timer.low { color: var(--wrong); }
+.option.picked { border-color: var(--accent); background: var(--accent-soft); }
+.exam-nav { display: flex; justify-content: space-between; gap: 0.5rem; }
+.flagged-btn { color: #b45309; border-color: #b45309; }
+.q-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(2.4rem, 1fr)); gap: 0.3rem; margin: 0.5rem 0; }
+.qg { border: 1px solid var(--border); background: var(--surface); border-radius: 6px; padding: 0.3rem 0; font-size: 0.8rem; cursor: pointer; }
+.qg.done { background: var(--accent-soft); border-color: var(--accent); }
+.qg.flag { box-shadow: inset 0 -3px 0 #e5a100; }
+.qg.cur { outline: 2px solid var(--text); }
+.missed { display: grid; gap: 0.4rem; }
+.wrong-text { color: var(--wrong); }

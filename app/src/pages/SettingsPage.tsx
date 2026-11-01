@@ -176,6 +176,51 @@ function CloudSync() {
   )
 }
 
+function DailyReminder() {
+  const [time, setTime] = useState(() => {
+    try {
+      return localStorage.getItem('study-cards:reminder') ?? '1900'
+    } catch {
+      return '1900'
+    }
+  })
+  const times = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, '0')}${i % 2 ? '30' : '00'}`)
+  const label = (t: string) => new Date(2000, 0, 1, Number(t.slice(0, 2)), Number(t.slice(2))).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  const add = () => {
+    try {
+      localStorage.setItem('study-cards:reminder', time)
+    } catch {
+      /* fine */
+    }
+    window.open(`./reminders/study-${time}.ics`, '_blank')
+  }
+  return (
+    <section className="panel">
+      <h2>Daily reminder</h2>
+      <p className="muted small">
+        Adds a repeating event with an alert to your phone's Calendar; tapping the alert's link opens Study Cards. (iPhone web apps can't
+        send their own scheduled notifications.)
+      </p>
+      <div className="row-form">
+        <select value={time} onChange={(e) => setTime(e.target.value)}>
+          {times.map((t) => (
+            <option key={t} value={t}>
+              {label(t)}
+            </option>
+          ))}
+        </select>
+        <button className="btn primary" onClick={add}>
+          Add to Calendar
+        </button>
+      </div>
+      <p className="muted small">
+        On iPhone: tap <b>Add to Calendar</b> on the screen that opens. To change the time later, delete the old "Study Cards" event in
+        Calendar and add a new one.
+      </p>
+    </section>
+  )
+}
+
 function StudySettings() {
   const s = useLiveQuery(getSettings)
   if (!s) return null
@@ -236,6 +281,8 @@ export default function SettingsPage() {
       <h1>Settings</h1>
 
       <StudySettings />
+
+      <DailyReminder />
 
       <CloudSync />
 

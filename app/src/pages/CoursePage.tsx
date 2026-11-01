@@ -4,7 +4,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ProgressBar, ScoreChart, StudyLauncher } from '../components'
 import { addSet, db, deleteCourse, liveSets, updateCourse } from '../db'
 import type { Scope } from '../scope'
-import { breakdown } from '../stats'
+import { breakdown, getSettings } from '../stats'
+import ExamPanel from '../ExamPanel'
+import { weakest } from '../exam'
 
 export default function CoursePage() {
   const { id = '' } = useParams()
@@ -25,14 +27,16 @@ export default function CoursePage() {
     for (const [t, n] of [...tagN].filter(([, n]) => n >= cards.length * 0.2 && n < cards.length).sort((a, b) => b[1] - a[1]).slice(0, 3))
       filters.push({ f: `tag:${t}`, label: `${t[0].toUpperCase()}${t.slice(1)} ${n}` })
     if (check) filters.push({ f: 'check', label: `⚠ Needs check ${check}` })
+    const weak = weakest(cards, await db.reviews.where('at').above(Date.now() - 60 * 86_400_000).toArray(), 40).length
+    if (weak) filters.push({ f: 'weak', label: `⚡ Weakest ${weak}` })
     const quizzes = await db.quizzes.where('scope').equals(`course:${id}`).sortBy('at')
-    return { sets, b: breakdown(cards), filters, quizzes }
+    return { sets, b: breakdown(cards), filters, quizzes, cards: cards, list, settings: await getSettings() }
   }, [id])
   const [name, setName] = useState('')
 
   if (course === undefined || data === undefined) return null
   if (!course || course.deleted) return <p>Course not found. <Link to="/">Back home</Link></p>
-  const { sets, b, filters, quizzes } = data
+  const { sets, b, filters, quizzes, cards, list, settings } = data
 
   const rename = async () => {
     const n = prompt('Rename course', course.name)
@@ -57,6 +61,7 @@ export default function CoursePage() {
       </Link>
       <h1>{course.name}</h1>
       <ProgressBar b={b} />
+      {b.total > 0 && <ExamPanel course={course} sets={list} cards={cards} settings={settings} />}
       {b.total > 0 && <StudyLauncher base={{ kind: 'course', id }} due={b.due} filters={filters} />}
       <ScoreChart results={quizzes} />
       <h2 className="section-title">Sets</h2>

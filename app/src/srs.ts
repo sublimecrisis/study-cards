@@ -1,4 +1,4 @@
-import { createEmptyCard, fsrs, Rating, type Card as FsrsCard, type Grade } from 'ts-fsrs'
+import { createEmptyCard, fsrs, FSRS6_DEFAULT_DECAY, Rating, type Card as FsrsCard, type Grade } from 'ts-fsrs'
 import { db, newId } from './db'
 import type { Card, Srs, StudyMode } from './types'
 
@@ -49,6 +49,20 @@ export const startOfDay = (t: number) => {
 
 /** Due today = studied before and scheduled for any time up to midnight. */
 export const isDue = (c: Pick<Card, 'srs'>, now = Date.now()) => !!c.srs && c.srs.state !== 0 && c.srs.due <= endOfToday(now)
+
+/**
+ * Probability you'd still recall this card at time `when` (FSRS-6 forgetting curve).
+ * Never-studied cards count as 0. Used for exam readiness and the exam boost.
+ */
+export function retrievabilityAt(c: Pick<Card, 'srs'>, when: number) {
+  const s = c.srs
+  if (!s || s.state === 0 || !s.stability) return 0
+  const last = s.last_review ?? s.due - s.scheduled_days * DAY
+  const t = Math.max(0, (when - last) / DAY)
+  const decay = FSRS6_DEFAULT_DECAY
+  const factor = Math.pow(0.9, -1 / decay) - 1
+  return Math.pow(1 + (factor * t) / s.stability, -decay)
+}
 
 /** What the four buttons would schedule, for labels like "Good · 3d". */
 export function preview(c: Card, now = new Date()) {

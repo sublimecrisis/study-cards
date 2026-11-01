@@ -15,6 +15,8 @@ export interface Course extends Base {
   name: string
   color: string
   archived: 0 | 1
+  /** Upcoming exam (epoch ms, local midnight). Drives the countdown, readiness and Review's exam boost. */
+  examDate?: number | null
 }
 
 export interface CardSet extends Base {

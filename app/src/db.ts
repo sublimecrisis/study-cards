@@ -50,7 +50,7 @@ export async function addCourse(name: string): Promise<ID> {
   return c.id
 }
 
-export const updateCourse = (id: ID, patch: Partial<Pick<Course, 'name' | 'color' | 'archived'>>) =>
+export const updateCourse = (id: ID, patch: Partial<Pick<Course, 'name' | 'color' | 'archived' | 'examDate'>>) =>
   db.courses.update(id, touch(patch))
 
 export async function deleteCourse(id: ID) {

@@ -5,11 +5,12 @@ import CardRow from '../CardRow'
 import { ProgressBar, ScoreChart, StudyLauncher } from '../components'
 import type { Scope } from '../scope'
 import { breakdown } from '../stats'
+import { weakest } from '../exam'
 import { db, deleteSet, liveCards, updateSet } from '../db'
 import { toCsv } from '../importers'
 import { download } from '../util'
 
-type Filter = { kind: 'all' } | { kind: 'starred' } | { kind: 'check' } | { kind: 'tag'; tag: string }
+type Filter = { kind: 'all' } | { kind: 'starred' } | { kind: 'check' } | { kind: 'weak' } | { kind: 'tag'; tag: string }
 
 export default function SetPage() {
   const { id = '' } = useParams()
@@ -19,6 +20,10 @@ export default function SetPage() {
   const cards = useLiveQuery(() => liveCards(id), [id])
   const quizzes = useLiveQuery(() => db.quizzes.where('scope').equals(`set:${id}`).sortBy('at'), [id])
   const [filter, setFilter] = useState<Filter>({ kind: 'all' })
+  const weakIds = useLiveQuery(async () => {
+    const cs = await liveCards(id)
+    return new Set(weakest(cs, await db.reviews.where('setId').equals(id).toArray(), 40).map((c) => c.id))
+  }, [id])
 
   // Only offer tags that narrow things down (a tag on every card isn't a useful filter).
   const tags = useMemo(() => {
@@ -32,11 +37,11 @@ export default function SetPage() {
   if (!set || set.deleted) return <p>Set not found. <Link to="/">Back home</Link></p>
 
   const shown = cards.filter((c) =>
-    filter.kind === 'starred' ? c.starred : filter.kind === 'check' ? c.needsCheck : filter.kind === 'tag' ? c.tags.includes(filter.tag) : true,
+    filter.kind === 'starred' ? c.starred : filter.kind === 'check' ? c.needsCheck : filter.kind === 'weak' ? weakIds?.has(c.id) : filter.kind === 'tag' ? c.tags.includes(filter.tag) : true,
   )
   const b = breakdown(cards)
   const studyFilter: Scope['filter'] =
-    filter.kind === 'starred' ? 'starred' : filter.kind === 'check' ? 'check' : filter.kind === 'tag' ? `tag:${filter.tag}` : 'all'
+    filter.kind === 'starred' ? 'starred' : filter.kind === 'check' ? 'check' : filter.kind === 'weak' ? 'weak' : filter.kind === 'tag' ? `tag:${filter.tag}` : 'all'
   const starred = cards.filter((c) => c.starred).length
   const flagged = cards.filter((c) => c.needsCheck).length
   const chip = (f: Filter, label: string) => (
@@ -78,6 +83,7 @@ export default function SetPage() {
             {chip({ kind: 'all' }, `All ${cards.length}`)}
             {starred > 0 && chip({ kind: 'starred' }, `★ Starred ${starred}`)}
             {flagged > 0 && chip({ kind: 'check' }, `⚠ Needs check ${flagged}`)}
+            {!!weakIds?.size && chip({ kind: 'weak' }, `⚡ Weakest ${weakIds.size}`)}
             {tags.map(({ t, k }) => chip({ kind: 'tag', tag: t }, `${t} ${k}`))}
           </div>
           <StudyLauncher base={{ kind: 'set', id }} due={filter.kind === 'all' ? b.due : breakdown(shown).due} filter={studyFilter} />
