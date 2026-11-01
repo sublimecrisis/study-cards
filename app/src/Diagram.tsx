@@ -18,6 +18,7 @@ export default function Diagram({ card, revealed, className }: { card: Card; rev
       {o.others.map((b, i) => (
         <span key={i} className="dg-other" style={pct(b)} />
       ))}
+      {!revealed && o.same?.map((b, i) => <span key={`s${i}`} className="dg-same" style={pct(b)} />)}
       <span className={`dg-target ${revealed ? 'revealed' : ''}`} style={pct(o.box)}>
         {revealed ? null : '?'}
       </span>

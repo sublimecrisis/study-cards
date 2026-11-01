@@ -54,6 +54,7 @@ export interface Occlusion {
   group: string // all cards made from the same diagram share this
   box: Box // the part this card asks about
   others: Box[] // the diagram's other labelled parts (left visible for context)
+  same?: Box[] // other parts with the SAME label: covered too, or they'd give the answer away
 }
 
 /** ts-fsrs card state with dates stored as epoch ms. */

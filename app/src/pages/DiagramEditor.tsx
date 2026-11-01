@@ -95,9 +95,11 @@ export default function DiagramEditor() {
     if (!ready) return
     setBusy(true)
     const all = parts.map((p) => p.box)
+    const norm = (t: string) => t.trim().toLowerCase()
     for (const cardId of removed) await deleteCard(cardId)
     for (const [i, p] of parts.entries()) {
-      const occlusion = { group, box: p.box, others: all.filter((_, k) => k !== i) }
+      const same = parts.filter((q, k) => k !== i && norm(q.label) === norm(p.label)).map((q) => q.box)
+      const occlusion = { group, box: p.box, others: all.filter((_, k) => k !== i), same }
       if (p.cardId) await updateCard(p.cardId, { term: title.trim(), definition: p.label.trim(), termImage: imageId, occlusion })
       else await addCards(setId, [{ term: title.trim(), definition: p.label.trim(), termImage: imageId, occlusion, tags: ['diagram'] }])
     }
