@@ -104,3 +104,38 @@ Priority key: **[1]** first release · **[2]** second release · **[3]** later
 
 ## Still open
 - Any feature above you'd **move up or drop**?
+
+---
+
+## Roadmap (planned 2026-11-01 with Paul)
+
+Context: NASM CPT attempt #1 on **2026-11-09**; retake voucher, window ends 2026-12-20.
+
+### Batch 1: before Nov 9 (in this order)
+1. **Scenario questions (AI)**: exam-style application MC questions generated from
+   cards ("client's knees cave in during the OHSA: which muscle is likely underactive?"),
+   cached on the card, mixed into practice exams and quizzes. Extends the `explain`
+   Edge Function with a `scenario` mode (Paul re-pastes the function once).
+2. **Ordering + matching question types**: sequences (OPT phases, kill chain, NIST IR,
+   GAS, plyo phases, motor learning stages) and pairs (OHSA compensation to over/
+   underactive muscles, distortion patterns). Defined as small "sequence"/"pairs" items
+   built from existing cards; usable in Quiz and practice exam.
+3. **"I guessed" + quick fix**: mark a correct answer as a guess (counts as weak, rated
+   Hard not Good); edit or flag a card from any study screen without leaving the session.
+4. **Stats dashboard**: accuracy by chapter over time, 30-day review forecast, time
+   studied per day, practice-exam score trend.
+
+### Batch 2: before the retake (Nov 10 → Dec 20)
+5. **Score report → plan**: enter NASM domain results; the app re-weights Review and
+   practice exams toward weak domains.
+6. **Listen mode**: hands-free audio review (TTS; reuse Study Reader voices where possible).
+7. **Stubborn-card help**: detect leeches (repeated lapses) and offer an AI mnemonic or
+   a simpler rewrite.
+
+### Batch 3: later
+8. **Game modes**: Match game, Write (type every answer), Speed round.
+9. **Real push notifications** (upgrade from the Calendar reminder) + weekly summary.
+10. **CySA+ hands-on style practice**: questions built on log snippets, scan output, command flags.
+
+### Parked (not chosen for now)
+- AI cards from notes/PDF/photo (+ fill-in-the-blank). Revisit when new school courses start.
