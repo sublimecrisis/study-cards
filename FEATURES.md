@@ -111,7 +111,7 @@ Priority key: **[1]** first release · **[2]** second release · **[3]** later
 
 Context: NASM CPT attempt #1 on **2026-11-09**; retake voucher, window ends 2026-12-20.
 
-### Batch 1: before Nov 9 (in this order)
+### Batch 1: before Nov 9 (in this order) — DONE 2026-11-01
 1. **Scenario questions (AI)**: exam-style application MC questions generated from
    cards ("client's knees cave in during the OHSA: which muscle is likely underactive?"),
    cached on the card, mixed into practice exams and quizzes. Extends the `explain`
