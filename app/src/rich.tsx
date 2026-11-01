@@ -72,7 +72,11 @@ export async function shrinkImage(file: File, max = 1600): Promise<Blob> {
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(bmp.width * scale)
   canvas.height = Math.round(bmp.height * scale)
-  canvas.getContext('2d')!.drawImage(bmp, 0, 0, canvas.width, canvas.height)
+  const ctx = canvas.getContext('2d')!
+  // JPEG has no transparency: paint white first, or transparent diagrams turn black.
+  ctx.fillStyle = '#fff'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height)
   bmp.close()
   return new Promise((ok, fail) =>
     canvas.toBlob((b) => (b ? ok(b) : fail(new Error('Could not read image'))), 'image/jpeg', 0.85),
