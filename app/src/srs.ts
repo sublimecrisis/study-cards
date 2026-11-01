@@ -115,14 +115,17 @@ export async function rate(card: Card, rating: Grade, ms: number) {
  * Learn / quiz answers feed the schedule without over-rewarding:
  * a miss is always "Again" (card comes back soon); a correct answer only counts
  * as "Good" when the card is new or due — otherwise the schedule is left alone.
+ * A lucky guess (right, but "I guessed") rates Hard and logs as not-correct, so it
+ * shortens the interval and counts toward weak cards.
  */
-export async function recordOutcome(card: Card, correct: boolean, mode: 'learn' | 'quiz', ms: number) {
+export async function recordOutcome(card: Card, correct: boolean, mode: 'learn' | 'quiz', ms: number, guessed = false) {
   const fresh = (await db.cards.get(card.id)) ?? card
   let rating: 0 | Grade = 0
-  if (!correct) rating = Rating.Again
+  if (guessed) rating = Rating.Hard
+  else if (!correct) rating = Rating.Again
   else if (statusOf(fresh) === 'new' || isDue(fresh)) rating = Rating.Good
   if (rating) await db.cards.update(card.id, { srs: nextSrs(fresh.srs, rating), updatedAt: Date.now(), dirty: 1 })
-  await log(fresh, mode, rating, correct, ms)
+  await log(fresh, mode, rating, correct && !guessed, ms)
 }
 
 /** Flashcards mode: counts toward streak/goal, never changes the schedule. */

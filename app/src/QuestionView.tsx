@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Kbd } from './components'
+import CardTools from './CardTools'
+import { GuessedButton, Kbd } from './components'
 import { gradeWritten, type Question } from './quizgen'
 import { CardImage, RichText } from './rich'
 import WhyPanel from './WhyPanel'
@@ -9,15 +10,15 @@ import DrillQuestion from './DrillQuestion'
 const SIDE_LABEL = { term: 'Term', definition: 'Definition' }
 
 /**
- * One question with instant feedback. Calls onAnswer(correct) once the student
+ * One question with instant feedback. Calls onAnswer(correct, guessed) once the student
  * moves on (so "I was right" can still flip a written answer before it counts).
  */
-export default function QuestionView({ q, onAnswer }: { q: Question; onAnswer: (correct: boolean) => void }) {
+export default function QuestionView({ q, onAnswer }: { q: Question; onAnswer: (correct: boolean, guessed?: boolean) => void }) {
   if (q.type === 'order' || q.type === 'match') return <DrillQuestion q={q} onAnswer={onAnswer} />
   return <StandardQuestion q={q} onAnswer={onAnswer} />
 }
 
-function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: boolean) => void }) {
+function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: boolean, guessed?: boolean) => void }) {
   const [picked, setPicked] = useState<number | null>(null) // mc index, or tf 1=true 0=false
   const [typed, setTyped] = useState('')
   const [result, setResult] = useState<boolean | null>(null)
@@ -47,7 +48,7 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (result !== null || e.target instanceof HTMLInputElement) return
+      if (result !== null || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       const n = Number(e.key)
       if ((q.type === 'mc' || q.type === 'scenario') && n >= 1 && n <= (q.options?.length ?? 0)) choose(n - 1)
       if (q.type === 'tf' && (e.key === 't' || e.key === '1')) choose(1)
@@ -62,6 +63,7 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
       <div className="q-prompt">
         <span className="q-label">{q.scenario ? 'Scenario' : SIDE_LABEL[q.promptSide]}</span>
         <RichText text={promptText} />
+        <CardTools card={q.card} />
         {q.scenario ? null : q.card.occlusion ? <Diagram card={q.card} revealed={result !== null} /> : <CardImage id={promptImg} className="face-img" />}
       </div>
 
@@ -177,6 +179,7 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
       {result !== null && (
         <div className={`feedback ${result ? 'right' : 'wrong'}`}>
           <span>{result ? '✓ Correct' : '✕ Not quite'}</span>
+          {result && <GuessedButton onClick={() => onAnswer(true, true)} />}
           <button ref={next} className="btn primary" onClick={() => onAnswer(result)}>
             Continue <Kbd>Enter</Kbd>
           </button>

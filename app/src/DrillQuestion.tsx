@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Kbd } from './components'
+import CardTools from './CardTools'
+import { GuessedButton, Kbd } from './components'
 import type { Question } from './quizgen'
 import { RichText } from './rich'
 
@@ -8,7 +9,7 @@ import { RichText } from './rich'
  * Matching: pick the matching term for each description.
  * All-or-nothing scoring, with every position/pair marked afterwards.
  */
-export default function DrillQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: boolean) => void }) {
+export default function DrillQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: boolean, guessed?: boolean) => void }) {
   const drill = q.card.drill!
   const [placed, setPlaced] = useState<string[]>([])
   const [picks, setPicks] = useState<Record<number, string>>({})
@@ -22,6 +23,7 @@ export default function DrillQuestion({ q, onAnswer }: { q: Question; onAnswer: 
         <div className="q-prompt">
           <span className="q-label">Put in order</span>
           <RichText text={q.card.term} />
+          <CardTools card={q.card} />
         </div>
         <ol className="order-placed">
           {placed.map((x, i) => (
@@ -53,6 +55,7 @@ export default function DrillQuestion({ q, onAnswer }: { q: Question; onAnswer: 
             )}
             <div className={`feedback ${checked ? 'right' : 'wrong'}`}>
               <span>{checked ? '✓ All in order' : `✕ ${placed.filter((x, i) => x === drill.items[i]).length} of ${drill.items.length} in the right spot`}</span>
+              {checked && <GuessedButton onClick={() => onAnswer(true, true)} />}
               <button className="btn primary" autoFocus onClick={() => onAnswer(checked)}>
                 Continue <Kbd>Enter</Kbd>
               </button>
@@ -71,6 +74,7 @@ export default function DrillQuestion({ q, onAnswer }: { q: Question; onAnswer: 
       <div className="q-prompt">
         <span className="q-label">Match them up</span>
         <RichText text={q.card.term} />
+        <CardTools card={q.card} />
       </div>
       <div className="match-rows">
         {pairs.map((p, i) => (
@@ -97,6 +101,7 @@ export default function DrillQuestion({ q, onAnswer }: { q: Question; onAnswer: 
       ) : (
         <div className={`feedback ${checked ? 'right' : 'wrong'}`}>
           <span>{checked ? '✓ All matched' : `✕ ${nRight} of ${pairs.length} right`}</span>
+          {checked && <GuessedButton onClick={() => onAnswer(true, true)} />}
           <button className="btn primary" autoFocus onClick={() => onAnswer(checked)}>
             Continue <Kbd>Enter</Kbd>
           </button>

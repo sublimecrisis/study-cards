@@ -75,9 +75,10 @@ export default function Quiz() {
     t0.current = qStart.current = Date.now()
   }
 
-  const onAnswer = async (correct: boolean) => {
+  const onAnswer = async (rightAnswer: boolean, guessed = false) => {
     const q = qs![i]
-    recordOutcome(q.card, correct, 'quiz', Date.now() - qStart.current)
+    recordOutcome(q.card, rightAnswer, 'quiz', Date.now() - qStart.current, guessed)
+    const correct = rightAnswer && !guessed // guesses go on the "missed" list for retry
     qStart.current = Date.now()
     const a = [...answers, correct]
     setAnswers(a)

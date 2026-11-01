@@ -1,3 +1,4 @@
+import CardTools from '../CardTools'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Kbd, SessionBar } from '../components'
@@ -144,6 +145,7 @@ export default function Review() {
           </>
         )}
       </div>
+      <CardTools key={card.id} card={card} />
       {shown && (
         <div onClick={(e) => e.stopPropagation()}>
           <WhyPanel key={card.id} card={card} answerSide="definition" compact />

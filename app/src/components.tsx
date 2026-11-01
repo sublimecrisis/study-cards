@@ -161,3 +161,10 @@ export const SessionBar = ({ done, total }: { done: number; total: number }) => 
 export function Kbd({ children }: { children: React.ReactNode }) {
   return <kbd className="kbd">{children}</kbd>
 }
+
+/** "Right, but I guessed": counts the answer as shaky so the card comes back sooner. */
+export const GuessedButton = ({ onClick }: { onClick: () => void }) => (
+  <button type="button" className="btn small guessed" title="Treat this as a miss so it comes back sooner" onClick={onClick}>
+    I guessed
+  </button>
+)

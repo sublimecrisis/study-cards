@@ -70,7 +70,8 @@ export default function Learn() {
     ask(s)
   }
 
-  const onAnswer = (correct: boolean) => {
+  const onAnswer = (rightAnswer: boolean, guessed = false) => {
+    const correct = rightAnswer && !guessed // a guess counts as a miss: the card comes back
     const ms = Date.now() - started.current
     const { state, learned } = answer(st!, correct)
     if (learned) recordOutcome(learned.card, learned.misses === 0, 'learn', ms)
