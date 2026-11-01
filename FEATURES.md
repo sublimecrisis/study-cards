@@ -125,6 +125,31 @@ Context: NASM CPT attempt #1 on **2026-11-09**; retake voucher, window ends 2026
 4. **Stats dashboard**: accuracy by chapter over time, 30-day review forecast, time
    studied per day, practice-exam score trend.
 
+### Focus timer (Pomodoro), planned 2026-11-01, build next
+Goal: 4-hour study blocks without burning out. Paul's choices:
+- **Rhythm:** default 50/10 (50 min focus, 10 min break) with a 30 min long break at the
+  2-hour mark: 4 focus rounds, about 3h20m of study in 4 hours. Other presets to switch
+  to: 25/5 (20 min long break every 4 rounds) and 90/20. Block length is adjustable
+  (default 4 h); the last round shrinks to fit and the block never ends on a break.
+- **Where:** a new Focus page (start a block, pick a preset, see the round plan, pause /
+  skip / end) plus a small timer pill in the top bar on every page ("Focus 32:10 · 2/4").
+- **Breaks = soft lock:** when a break starts, a break screen covers the study pages with
+  the countdown and what to do (stand up, water, look 20 ft away, no phone scrolling).
+  A small "Skip break" link stays available. Chime + banner when a phase ends while the
+  app is open.
+- **Fatigue check (accuracy drop):** during a block, if the last ~15 answers are 20+
+  points below your accuracy earlier in the block (min. ~30 answers), the pill suggests
+  "Accuracy dropping: take your break now?" (one tap starts the break early).
+- **End-of-block summary:** cards answered, accuracy per round and minutes focused, so
+  you can see where you started to fade. Shown when the block ends and kept in Stats.
+- **Background alerts:** none for now. The timer uses start times, not a running counter,
+  so it is correct when you reopen the app; real alerts with a locked phone come with
+  push notifications (batch 3).
+- **How it's built:** timer state = preset, block length, start time, pause/skip shift,
+  saved on the device (per-device, like a remembered tab). The round plan and "where am I
+  now" are plain functions with unit tests (pause, skip, last round trimmed, block end).
+  Fatigue + summary read the existing review log for the block's time window.
+
 ### Batch 2: before the retake (Nov 10 → Dec 20)
 5. **Score report → plan**: enter NASM domain results; the app re-weights Review and
    practice exams toward weak domains.
