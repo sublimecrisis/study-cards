@@ -54,7 +54,20 @@ Deno.serve(async (req) => {
       : 'The student got this card wrong (or asked for an explanation).',
   ].filter(Boolean)
 
-  const system = [
+  const scenario = b.mode === 'scenario'
+  const related = (Array.isArray(b.related) ? b.related : []).slice(0, 12).map((x) => clip(x, 120))
+
+  const system = scenario
+    ? [
+        'You write certification exam practice questions.',
+        'Given one flashcard, write ONE realistic scenario-based multiple-choice question that tests',
+        'APPLYING the concept (a client, situation, or case), not recalling the definition word for word.',
+        'Exactly 4 options, exactly one correct; wrong options must be plausible and from the same topic area',
+        '(use the related concepts listed when helpful). Stay consistent with the flashcard; do not invent statistics.',
+        'Reply with ONLY a JSON object, no markdown: {"question": string, "options": [4 strings],',
+        '"correct": index 0-3, "why": one or two plain-text sentences explaining the answer}.',
+      ].join(' ')
+    : [
     'You are a concise, encouraging study tutor helping a student prepare for certification exams.',
     'Explain in at most 120 words, plain text only (no markdown, no asterisks, no headings):',
     '1) why the correct answer is correct (the underlying idea, not a restatement),',
@@ -63,6 +76,10 @@ Deno.serve(async (req) => {
     'Use LaTeX in $...$ only for formulas. Do not invent statistics or textbook page facts;',
     'if the flashcard itself looks wrong or outdated, say so briefly.',
   ].join(' ')
+
+  const userText = scenario
+    ? [`Course: ${course || 'unknown'}`, `Flashcard term: ${term}`, `Flashcard definition: ${definition}`, notes && `Notes: ${notes}`, related.length && `Related concepts: ${related.join('; ')}`].filter(Boolean).join('\n')
+    : lines.join('\n')
 
   const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
@@ -75,12 +92,12 @@ Deno.serve(async (req) => {
     body: JSON.stringify({
       model: Deno.env.get('OPENROUTER_MODEL') || 'anthropic/claude-haiku-5.5',
       max_tokens: 900,
-      temperature: 0.3,
+      temperature: scenario ? 0.6 : 0.3,
       // Explanations don't need hidden reasoning; it also ate the output budget and cut answers off.
       reasoning: { enabled: false },
       messages: [
         { role: 'system', content: system },
-        { role: 'user', content: lines.join('\n') },
+        { role: 'user', content: userText },
       ],
     }),
   })
@@ -94,5 +111,16 @@ Deno.serve(async (req) => {
   const choice = j?.choices?.[0]
   const text = choice?.message?.content ?? ''
   if (choice?.finish_reason === 'length') console.warn('explanation hit max_tokens')
+  if (scenario) {
+    // Pull the JSON object out even if the model wrapped it in prose or a code fence; validate the shape.
+    try {
+      const q = JSON.parse(String(text).slice(String(text).indexOf('{'), String(text).lastIndexOf('}') + 1))
+      const ok = typeof q.question === 'string' && Array.isArray(q.options) && q.options.length === 4 && q.options.every((o: unknown) => typeof o === 'string') && Number.isInteger(q.correct) && q.correct >= 0 && q.correct < 4
+      if (!ok) throw new Error('shape')
+      return new Response(JSON.stringify({ scenario: { question: q.question, options: q.options, correct: q.correct, why: String(q.why ?? '') } }), { headers })
+    } catch {
+      return new Response(JSON.stringify({ error: 'The AI returned an unusable question - try again.' }), { status: 502, headers })
+    }
+  }
   return new Response(JSON.stringify({ text }), { headers })
 })
