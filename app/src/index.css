@@ -413,3 +413,15 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .card-tools-edit .btn { justify-self: start; }
 .btn.guessed { margin-left: auto; }
 @media (prefers-color-scheme: dark) { .card-tools .flag-on { color: #fbbf24; } }
+
+/* stats page */
+.stat-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin: 0.8rem 0; }
+.stat-tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.7rem 0.6rem; text-align: center; }
+.stat-tile .stat-num { font-size: 1.3rem; font-weight: 700; }
+.acc-sets { margin-top: 0.6rem; }
+.tbl th { text-align: left; font-weight: 600; padding: 0.25rem 0.5rem; }
+.tab { padding: 0.2rem 0.6rem; }
+.acc-sets li { grid-template-columns: minmax(0, 1fr) auto; row-gap: 0.15rem; }
+.acc-sets li a { grid-column: 1 / -1; }
+.acc-sets .mini-bar { width: 100%; }
+.acc-sets a { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

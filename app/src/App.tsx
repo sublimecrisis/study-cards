@@ -1,3 +1,4 @@
+import Stats from './pages/Stats'
 import { HashRouter, NavLink, Route, Routes } from 'react-router-dom'
 import Home from './pages/Home'
 import CoursePage from './pages/CoursePage'
@@ -16,6 +17,7 @@ import PracticeExam from './pages/PracticeExam'
 const NAV = [
   { to: '/', label: 'Home', icon: '⌂' },
   { to: '/search', label: 'Search', icon: '⌕' },
+  { to: '/stats', label: 'Stats', icon: '▥' },
   { to: '/import', label: 'Import', icon: '⇪' },
   { to: '/settings', label: 'Settings', icon: '⚙' },
 ]
@@ -36,6 +38,7 @@ export default function App() {
           <Route path="/set/:id/edit" element={<EditCards />} />
           <Route path="/import" element={<ImportPage />} />
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/stats" element={<Stats />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/study/review" element={<Review />} />
           <Route path="/study/learn" element={<Learn />} />

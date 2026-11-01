@@ -82,7 +82,7 @@ export function StudyLauncher(props: { base: Omit<Scope, 'filter'>; due: number;
 }
 
 /** Quiz score history: one column per quiz, oldest → newest. */
-export function ScoreChart({ results }: { results: QuizResult[] }) {
+export function ScoreChart({ results, title = 'Quiz scores' }: { results: QuizResult[]; title?: string }) {
   const [hover, setHover] = useState<number | null>(null)
   if (!results.length) return null
   const last = results.slice(-20)
@@ -94,9 +94,9 @@ export function ScoreChart({ results }: { results: QuizResult[] }) {
   return (
     <figure className="chart">
       <figcaption>
-        <strong>Quiz scores</strong> <span className="muted small">last {last.length} · average {avg}%</span>
+        <strong>{title}</strong> <span className="muted small">last {last.length} · average {avg}%</span>
       </figcaption>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Quiz scores, average ${avg}%`} onMouseLeave={() => setHover(null)}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${title}, average ${avg}%`} onMouseLeave={() => setHover(null)}>
         {[0, 0.5, 1].map((p) => (
           <g key={p}>
             <line x1={L} x2={W} y1={y(p)} y2={y(p)} className="grid" />
@@ -168,3 +168,77 @@ export const GuessedButton = ({ onClick }: { onClick: () => void }) => (
     I guessed
   </button>
 )
+
+export interface Col {
+  key: string
+  tick: string // x-axis label (only a few are drawn)
+  value: number
+  tip: React.ReactNode
+}
+
+/** Single-series column chart: hover/tap a column for its value, table underneath. */
+export function ColumnChart({ title, sub, cols, fmt, table }: { title: string; sub?: string; cols: Col[]; fmt: (v: number) => string; table: [string, string] }) {
+  const [hover, setHover] = useState<number | null>(null)
+  const W = 320, H = 110, T = 8, L = 30, B = 14, gap = 2
+  const raw = Math.max(2, ...cols.map((c) => c.value))
+  const step = 10 ** Math.floor(Math.log10(raw))
+  const max = [2, 4, 6, 8, 10].map((m) => m * step).find((m) => m >= raw)! // even axis top so the midline is a whole number
+  const bw = (W - L - 4) / cols.length - gap
+  const y = (v: number) => T + (H - B - T) * (1 - v / max)
+  const ticks = new Set([0, Math.floor((cols.length - 1) / 2), cols.length - 1])
+  const h = hover !== null ? cols[hover] : null
+  return (
+    <figure className="chart">
+      <figcaption>
+        <strong>{title}</strong> {sub && <span className="muted small">{sub}</span>}
+      </figcaption>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title} onMouseLeave={() => setHover(null)}>
+        {[0, max / 2, max].map((v) => (
+          <g key={v}>
+            <line x1={L} x2={W} y1={y(v)} y2={y(v)} className="grid" />
+            <text x={L - 4} y={y(v) + 3} className="tick" textAnchor="end">
+              {fmt(v)}
+            </text>
+          </g>
+        ))}
+        {cols.map((c, i) => {
+          const x = L + 4 + i * (bw + gap)
+          const top = y(c.value)
+          const r = Math.min(4, bw / 2, H - B - top)
+          return (
+            <g key={c.key} onMouseEnter={() => setHover(i)} onClick={() => setHover(i)}>
+              <rect x={x - gap / 2} y={T} width={bw + gap} height={H - B - T + 12} fill="transparent" />
+              <path className={`col ${hover === i ? 'on' : ''}`} d={c.value > 0 ? `M${x},${H - B} V${top + r} q0,-${r} ${r},-${r} h${bw - 2 * r} q${r},0 ${r},${r} V${H - B} Z` : ''} />
+              {ticks.has(i) && (
+                <text x={x + bw / 2} y={H - B + 11} className="tick" textAnchor={i === 0 ? 'start' : i === cols.length - 1 ? 'end' : 'middle'}>
+                  {c.tick}
+                </text>
+              )}
+            </g>
+          )
+        })}
+        <line x1={L} x2={W} y1={H - B} y2={H - B} className="axis" />
+      </svg>
+      <div className="chart-tip small">{h ? h.tip : <span className="muted">Hover or tap a column for details.</span>}</div>
+      <details className="small">
+        <summary>Table</summary>
+        <table className="tbl">
+          <thead>
+            <tr>
+              <th>{table[0]}</th>
+              <th>{table[1]}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {cols.map((c) => (
+              <tr key={c.key}>
+                <td>{c.tick}</td>
+                <td>{fmt(c.value)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </details>
+    </figure>
+  )
+}
