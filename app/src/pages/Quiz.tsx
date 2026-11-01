@@ -8,9 +8,12 @@ import { CardImage, RichText } from '../rich'
 import { loadScope, readScope, scopeKey } from '../scope'
 import { recordOutcome } from '../srs'
 import type { Card, QuizResult } from '../types'
+import { prepareScenarios } from '../scenario'
+import { shuffle } from '../scope'
 
 const QUICK: QuizConfig = { count: 10, types: ['mc', 'tf', 'mc', 'written'], answerWith: 'both' }
-const TYPE_LABEL: Record<QType, string> = { mc: 'Multiple choice', tf: 'True / false', written: 'Written' }
+// Ordering/matching come from drill cards themselves, so they aren't a choice here.
+const TYPE_LABEL: Partial<Record<QType, string>> = { mc: 'Multiple choice', tf: 'True / false', written: 'Written', scenario: 'Scenario (AI)' }
 
 const fmtTime = (ms: number) => {
   const s = Math.round(ms / 1000)
@@ -32,6 +35,7 @@ export default function Quiz() {
   const t0 = useRef(0)
   const qStart = useRef(0)
   const lastCfg = useRef<QuizConfig>(QUICK)
+  const [prep, setPrep] = useState<string>('')
 
   useEffect(() => {
     loadScope(scope).then(({ cards, label }) => {
@@ -48,9 +52,22 @@ export default function Quiz() {
     return () => clearInterval(id)
   }, [qs, result])
 
-  const start = (from: Card[], c: QuizConfig, retry = false) => {
+  const start = async (from: Card[], c: QuizConfig, retry = false) => {
     if (!retry) lastCfg.current = c // "New quiz" repeats the original settings, not the retry's size
-    setQs(buildQuiz(from, cards!, { ...c, count: Math.min(c.count, from.length) }))
+    let pickFrom = from.filter((x) => !(c.types.length === 1 && c.types[0] === 'scenario' && x.occlusion))
+    if (c.types.includes('scenario')) {
+      // Generate the AI questions this quiz needs before it starts (cached afterwards).
+      pickFrom = shuffle(pickFrom).slice(0, Math.min(c.count, pickFrom.length))
+      const need = pickFrom.filter((x) => !x.scenarios?.length && !x.occlusion) // question types are assigned after shuffling, so prepare all picked cards
+      if (need.length) {
+        setPrep(`Writing ${need.length} scenario questions…`)
+        const r = await prepareScenarios(need, (d, t) => setPrep(`Writing scenario questions ${d}/${t}…`))
+        setPrep(r.failed ? `${r.failed} couldn't be written (${r.error}); using regular questions for those.` : '')
+        const fresh = new Map((await db.cards.bulkGet(pickFrom.map((x) => x.id))).filter(Boolean).map((x) => [x!.id, x!]))
+        pickFrom = pickFrom.map((x) => fresh.get(x.id) ?? x)
+      }
+    }
+    setQs(buildQuiz(pickFrom, cards!, { ...c, count: Math.min(c.count, pickFrom.length) }))
     setI(0)
     setAnswers([])
     setResult(null)
@@ -165,6 +182,7 @@ export default function Quiz() {
       <button className="btn primary wide" onClick={() => start(cards, { ...QUICK, count: Math.min(10, cards.length) })}>
         ⚡ Quick quiz — {Math.min(10, cards.length)} mixed questions
       </button>
+      {prep && <p className="result small">{prep}</p>}
       <section className="panel">
         <h2>Custom quiz</h2>
         <div className="form-grid">

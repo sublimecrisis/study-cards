@@ -1,7 +1,7 @@
 import { shuffle } from './scope'
-import type { Card } from './types'
+import type { Card, Scenario } from './types'
 
-export type QType = 'mc' | 'tf' | 'written'
+export type QType = 'mc' | 'tf' | 'written' | 'scenario' | 'order' | 'match'
 export type AnswerWith = 'term' | 'definition' | 'both'
 
 export interface QuizConfig {
@@ -22,6 +22,8 @@ export interface Question {
   shown?: string // tf: the answer side shown (may be a wrong one)
   shownCard?: Card // tf: the card `shown` came from
   tfTrue?: boolean
+  scenario?: Scenario // scenario: the AI-written question (options/correctIndex hold its shuffled choices)
+  shuffled?: string[] // order: items in the order shown; match: right-hand choices in the order shown
 }
 
 const side = (c: Card, s: 'term' | 'definition') => (s === 'term' ? c.term : c.definition)
@@ -40,7 +42,7 @@ export function distractorCards(card: Card, pool: Card[], s: 'term' | 'definitio
   const rw = words(right)
   const seen = new Set([right.toLowerCase()])
   const scored = pool
-    .filter((c) => c.id !== card.id)
+    .filter((c) => c.id !== card.id && !c.drill && !c.occlusion)
     .map((c) => {
       const t = side(c, s).trim()
       let shared = 0
@@ -61,6 +63,14 @@ export function distractorCards(card: Card, pool: Card[], s: 'term' | 'definitio
 }
 
 export function makeQuestion(card: Card, pool: Card[], type: QType, answerWith: AnswerWith): Question {
+  // Drill cards are always asked their own way.
+  if (card.drill?.kind === 'order') {
+    const items = card.drill.items
+    let shuffled = shuffle(items)
+    if (shuffled.every((x, i) => x === items[i]) && shuffled.length > 1) shuffled = [...shuffled.slice(1), shuffled[0]] // never start already solved
+    return { card, type: 'order', promptSide: 'term', answerSide: 'definition', shuffled }
+  }
+  if (card.drill?.kind === 'match') return { card, type: 'match', promptSide: 'term', answerSide: 'definition', shuffled: shuffle(card.drill.pairs.map((p) => p[1])) }
   // In mixed mode, typed answers are always the (short) term — typing whole definitions isn't a fair test.
   const answerSide: 'term' | 'definition' = card.occlusion
     ? 'definition' // a diagram card always asks "name the covered part"
@@ -71,6 +81,12 @@ export function makeQuestion(card: Card, pool: Card[], type: QType, answerWith: 
       : answerWith
   const promptSide = answerSide === 'term' ? 'definition' : 'term'
   const q: Question = { card, type, promptSide, answerSide }
+  if (type === 'scenario') {
+    const sc = card.scenarios?.[Math.floor(Math.random() * (card.scenarios?.length ?? 0))]
+    if (!sc) return makeQuestion(card, pool, 'mc', answerWith) // not generated yet: fall back to a normal question
+    const order = shuffle([0, 1, 2, 3])
+    return { ...q, scenario: sc, options: order.map((k) => sc.options[k]), correctIndex: order.indexOf(sc.correct) }
+  }
   if (type === 'mc') {
     const wrong = distractorCards(card, pool, answerSide)
     if (wrong.length === 0) return { ...q, type: 'written' } // tiny set: nothing to choose from

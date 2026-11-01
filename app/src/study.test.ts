@@ -88,3 +88,17 @@ describe('streaks', () => {
     expect(dayStats(logs, now).studiedToday).toBe(1)
   })
 })
+
+describe('scenario questions', () => {
+  it('keep the right answer correct after shuffling options, and fall back to MC when not generated', async () => {
+    const { makeQuestion } = await import('./quizgen')
+    const sc = { question: 'A client…?', options: ['A', 'B', 'C', 'D'], correct: 2, why: 'because' }
+    const c = card('s1', 'Term', 'Def', { scenarios: [sc] })
+    for (let k = 0; k < 20; k++) {
+      const q = makeQuestion(c, [c], 'scenario', 'both')
+      expect(q.options![q.correctIndex!]).toBe('C')
+    }
+    const plain = card('p', 'T', 'D')
+    expect(makeQuestion(plain, [plain, card('x', 'X', 'Y'), card('z', 'Z', 'W')], 'scenario', 'both').type).not.toBe('scenario')
+  })
+})

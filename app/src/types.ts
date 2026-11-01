@@ -40,8 +40,21 @@ export interface Card extends Base {
   srs?: Srs | null
   /** Saved AI explanations, keyed by the wrong answer they explain ('' = general). Synced with the card. */
   explanations?: Record<string, string>
+  /** Ordering / matching drill: this card is answered by putting items in order or pairing them up. */
+  drill?: Drill | null
+  /** AI-written exam-style application questions about this card (cached, synced). */
+  scenarios?: Scenario[]
   /** "Label the diagram" card: termImage is the diagram, `box` is the part to name (the definition is its label). */
   occlusion?: Occlusion | null
+}
+
+export type Drill = { kind: 'order'; items: string[] } | { kind: 'match'; pairs: [string, string][] }
+
+export interface Scenario {
+  question: string
+  options: string[] // 4
+  correct: number
+  why: string
 }
 
 /** A rectangle on an image, as fractions (0–1) of its width/height so it survives resizing. */

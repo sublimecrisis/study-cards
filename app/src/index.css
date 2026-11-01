@@ -380,3 +380,17 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .qg.cur { outline: 2px solid var(--text); }
 .missed { display: grid; gap: 0.4rem; }
 .wrong-text { color: var(--wrong); }
+
+/* ordering & matching drills */
+.order-placed { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.4rem; }
+.order-item { width: 100%; display: flex; gap: 0.6rem; align-items: center; text-align: left; padding: 0.7rem 0.9rem; border-radius: 12px; border: 1px solid var(--accent); background: var(--accent-soft); cursor: pointer; }
+.order-placed li.right .order-item { border-color: var(--right); background: var(--right-bg); }
+.order-placed li.wrong .order-item { border-color: var(--wrong); background: var(--wrong-bg); }
+.order-n { font-weight: 800; color: var(--accent); min-width: 1.4rem; }
+.order-pool { display: grid; gap: 0.4rem; }
+.match-rows { display: grid; gap: 0.5rem; }
+.match-row { display: grid; gap: 0.35rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.7rem 0.9rem; }
+.match-row.right { border-color: var(--right); background: var(--right-bg); }
+.match-row.wrong { border-color: var(--wrong); background: var(--wrong-bg); }
+.match-left { font-size: 0.95rem; }
+.match-row select { width: 100%; }

@@ -4,6 +4,7 @@ import { gradeWritten, type Question } from './quizgen'
 import { CardImage, RichText } from './rich'
 import WhyPanel from './WhyPanel'
 import Diagram from './Diagram'
+import DrillQuestion from './DrillQuestion'
 
 const SIDE_LABEL = { term: 'Term', definition: 'Definition' }
 
@@ -12,14 +13,19 @@ const SIDE_LABEL = { term: 'Term', definition: 'Definition' }
  * moves on (so "I was right" can still flip a written answer before it counts).
  */
 export default function QuestionView({ q, onAnswer }: { q: Question; onAnswer: (correct: boolean) => void }) {
+  if (q.type === 'order' || q.type === 'match') return <DrillQuestion q={q} onAnswer={onAnswer} />
+  return <StandardQuestion q={q} onAnswer={onAnswer} />
+}
+
+function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: boolean) => void }) {
   const [picked, setPicked] = useState<number | null>(null) // mc index, or tf 1=true 0=false
   const [typed, setTyped] = useState('')
   const [result, setResult] = useState<boolean | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const next = useRef<HTMLButtonElement>(null)
 
-  const answerText = q.answerSide === 'term' ? q.card.term : q.card.definition
-  const promptText = q.promptSide === 'term' ? q.card.term : q.card.definition
+  const answerText = q.scenario ? q.options![q.correctIndex!] : q.answerSide === 'term' ? q.card.term : q.card.definition
+  const promptText = q.scenario ? q.scenario.question : q.promptSide === 'term' ? q.card.term : q.card.definition
   const promptImg = q.promptSide === 'term' ? q.card.termImage : q.card.defImage
 
   useEffect(() => {
@@ -32,7 +38,7 @@ export default function QuestionView({ q, onAnswer }: { q: Question; onAnswer: (
   const choose = (i: number) => {
     if (result !== null) return
     setPicked(i)
-    setResult(q.type === 'mc' ? i === q.correctIndex : (i === 1) === q.tfTrue)
+    setResult(q.type === 'mc' || q.type === 'scenario' ? i === q.correctIndex : (i === 1) === q.tfTrue)
   }
   const submitWritten = (dontKnow = false) => {
     if (result !== null) return
@@ -43,7 +49,7 @@ export default function QuestionView({ q, onAnswer }: { q: Question; onAnswer: (
     const onKey = (e: KeyboardEvent) => {
       if (result !== null || e.target instanceof HTMLInputElement) return
       const n = Number(e.key)
-      if (q.type === 'mc' && n >= 1 && n <= (q.options?.length ?? 0)) choose(n - 1)
+      if ((q.type === 'mc' || q.type === 'scenario') && n >= 1 && n <= (q.options?.length ?? 0)) choose(n - 1)
       if (q.type === 'tf' && (e.key === 't' || e.key === '1')) choose(1)
       if (q.type === 'tf' && (e.key === 'f' || e.key === '2')) choose(0)
     }
@@ -54,14 +60,14 @@ export default function QuestionView({ q, onAnswer }: { q: Question; onAnswer: (
   return (
     <div className="question">
       <div className="q-prompt">
-        <span className="q-label">{SIDE_LABEL[q.promptSide]}</span>
+        <span className="q-label">{q.scenario ? 'Scenario' : SIDE_LABEL[q.promptSide]}</span>
         <RichText text={promptText} />
-        {q.card.occlusion ? <Diagram card={q.card} revealed={result !== null} /> : <CardImage id={promptImg} className="face-img" />}
+        {q.scenario ? null : q.card.occlusion ? <Diagram card={q.card} revealed={result !== null} /> : <CardImage id={promptImg} className="face-img" />}
       </div>
 
-      {q.type === 'mc' && (
+      {(q.type === 'mc' || q.type === 'scenario') && (
         <>
-          <div className="q-ask muted small">Choose the matching {SIDE_LABEL[q.answerSide].toLowerCase()}</div>
+          <div className="q-ask muted small">{q.scenario ? 'Choose the best answer' : `Choose the matching ${SIDE_LABEL[q.answerSide].toLowerCase()}`}</div>
           <div className="options">
             {q.options!.map((o, i) => {
               const state = result === null ? '' : i === q.correctIndex ? 'right' : i === picked ? 'wrong' : 'dim'
@@ -146,7 +152,18 @@ export default function QuestionView({ q, onAnswer }: { q: Question; onAnswer: (
         </form>
       )}
 
-      {result === false && (
+      {q.scenario && result !== null && (
+        <div className="why">
+          <p>
+            <b>Why:</b> <RichText text={q.scenario.why} />
+          </p>
+          <p className="muted small">
+            Card: <RichText text={q.card.term} /> — <RichText text={q.card.definition} />
+          </p>
+        </div>
+      )}
+
+      {result === false && !q.scenario && (
         <WhyPanel
           card={q.card}
           answerSide={q.answerSide}

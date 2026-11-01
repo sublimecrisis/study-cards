@@ -3,7 +3,9 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Kbd, SessionBar } from '../components'
 import { db, newId } from '../db'
 import QuestionView from '../QuestionView'
-import { buildQuiz, type Question } from '../quizgen'
+import { makeQuestion, type Question } from '../quizgen'
+import { prepareScenarios } from '../scenario'
+import { shuffle } from '../scope'
 import { RichText } from '../rich'
 import { loadScope, readScope, scopeKey } from '../scope'
 import { recordOutcome } from '../srs'
@@ -37,6 +39,8 @@ export default function PracticeExam() {
   const [length, setLength] = useState(120)
   const [essentialsOnly, setEssentialsOnly] = useState(false)
   const [timed, setTimed] = useState(true)
+  const [useScenarios, setUseScenarios] = useState(true)
+  const [prep, setPrep] = useState('')
   const [qs, setQs] = useState<Question[] | null>(null)
   const [answers, setAnswers] = useState<(number | null)[]>([])
   const [flags, setFlags] = useState<Set<number>>(new Set())
@@ -49,7 +53,7 @@ export default function PracticeExam() {
 
   useEffect(() => {
     loadScope({ ...scope, filter: 'all' }).then(({ cards, sets, label }) => {
-      setAll(cards.filter((c) => !c.occlusion)) // exam questions are text; diagram drills stay in Learn/Quiz
+      setAll(cards.filter((c) => !c.occlusion && !c.drill)) // exam questions are text MC; diagram and order/match drills stay in Learn/Quiz
       setSets(sets)
       setLabel(label)
     })
@@ -64,9 +68,22 @@ export default function PracticeExam() {
 
   const pool = useMemo(() => (all && essentialsOnly ? all.filter((c) => c.tags.includes('essentials')) : (all ?? [])), [all, essentialsOnly])
 
-  const start = () => {
+  const start = async () => {
     const n = Math.min(length, pool.length)
-    setQs(buildQuiz(pool, all!, { count: n, types: ['mc'], answerWith: 'both' }))
+    let picked = shuffle(pool).slice(0, n)
+    // About 40% exam-style scenario questions (AI-written once per card, then cached).
+    const nScen = useScenarios ? Math.round(n * 0.4) : 0
+    if (nScen) {
+      const need = picked.slice(0, nScen).filter((c) => !c.scenarios?.length)
+      if (need.length) {
+        setPrep(`Writing ${need.length} scenario questions (first time only)…`)
+        const r = await prepareScenarios(need, (d, t) => setPrep(`Writing scenario questions ${d}/${t} (first time only)…`))
+        setPrep(r.failed ? `${r.failed} scenario questions couldn't be written (${r.error}); regular questions used instead.` : '')
+        const fresh = new Map((await db.cards.bulkGet(picked.map((c) => c.id))).filter(Boolean).map((c) => [c!.id, c!]))
+        picked = picked.map((c) => fresh.get(c.id) ?? c)
+      }
+    }
+    setQs(shuffle(picked.map((c, k) => makeQuestion(c, all!, k < nScen ? 'scenario' : 'mc', 'both'))))
     setAnswers(Array(n).fill(null))
     setFlags(new Set())
     setI(0)
@@ -153,7 +170,11 @@ export default function PracticeExam() {
             <button className={`chip ${timed ? 'on' : ''}`} onClick={() => setTimed(!timed)}>
               {timed ? '✓ ' : ''}Timed
             </button>
+            <button className={`chip ${useScenarios ? 'on' : ''}`} onClick={() => setUseScenarios(!useScenarios)}>
+              {useScenarios ? '✓ ' : ''}Scenario questions (AI)
+            </button>
           </div>
+          {prep && <p className="result small">{prep}</p>}
           <button className="btn primary" onClick={start} disabled={pool.length < 4}>
             Start {Math.min(length, pool.length)}-question exam
           </button>
@@ -238,12 +259,23 @@ export default function PracticeExam() {
             <div className="cards">
               {missed.map(({ q, k }) => (
                 <div key={k} className="panel missed">
-                  <div className="q-label">{q.promptSide === 'term' ? 'Term' : 'Definition'}</div>
-                  <RichText text={q.promptSide === 'term' ? q.card.term : q.card.definition} />
+                  <div className="q-label">{q.scenario ? 'Scenario' : q.promptSide === 'term' ? 'Term' : 'Definition'}</div>
+                  <RichText text={q.scenario ? q.scenario.question : q.promptSide === 'term' ? q.card.term : q.card.definition} />
                   <p className="small">
                     <span className="wrong-text">Your answer: {answers[k] === null ? '(none)' : q.options![answers[k]!]}</span>
                   </p>
+                  {q.scenario ? (
+                    <div className="why">
+                      <p>
+                        <b>Correct:</b> <RichText text={q.options![q.correctIndex!]} />
+                      </p>
+                      <p>
+                        <b>Why:</b> <RichText text={q.scenario.why} />
+                      </p>
+                    </div>
+                  ) : (
                   <WhyPanel card={q.card} answerSide={q.answerSide} chosen={answers[k] === null ? undefined : q.options![answers[k]!]} chosenCard={answers[k] === null ? undefined : q.optionCards?.[answers[k]!]} />
+                  )}
                 </div>
               ))}
             </div>
@@ -268,8 +300,8 @@ export default function PracticeExam() {
       <SessionBar done={answered} total={qs.length} />
       <div className="question">
         <div className="q-prompt">
-          <span className="q-label">{q.promptSide === 'term' ? 'Term' : 'Definition'} — choose the matching {q.answerSide}</span>
-          <RichText text={q.promptSide === 'term' ? q.card.term : q.card.definition} />
+          <span className="q-label">{q.scenario ? 'Scenario — choose the best answer' : `${q.promptSide === 'term' ? 'Term' : 'Definition'} — choose the matching ${q.answerSide}`}</span>
+          <RichText text={q.scenario ? q.scenario.question : q.promptSide === 'term' ? q.card.term : q.card.definition} />
         </div>
         <div className="options">
           {q.options!.map((o, k) => (
