@@ -125,7 +125,7 @@ Context: NASM CPT attempt #1 on **2026-11-09**; retake voucher, window ends 2026
 4. **Stats dashboard**: accuracy by chapter over time, 30-day review forecast, time
    studied per day, practice-exam score trend.
 
-### Focus timer (Pomodoro), planned 2026-11-01, build next
+### Focus timer (Pomodoro), planned 2026-11-01 — DONE 2026-11-01
 Goal: 4-hour study blocks without burning out. Paul's choices:
 - **Rhythm:** default 50/10 (50 min focus, 10 min break) with a 30 min long break at the
   2-hour mark: 4 focus rounds, about 3h20m of study in 4 hours. Other presets to switch
