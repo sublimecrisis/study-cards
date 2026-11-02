@@ -21,6 +21,8 @@ import { BEDTIME_DONE_KEY } from '../bedtime'
 import { loadPairs, partnerMap, partnerOf } from '../confusions'
 import { twinIndex } from '../twinStore'
 import { oncePerConcept } from '../twins'
+import { activeNow } from '../studyClock'
+import PauseControl from '../PauseControl'
 
 const BUTTONS: { r: Grade; label: string; cls: string }[] = [
   { r: Rating.Again, label: 'Again', cls: 'again' },
@@ -52,7 +54,7 @@ export default function Review() {
   const [shown, setShown] = useState(false)
   const [done, setDone] = useState(0)
   const [total, setTotal] = useState(0)
-  const started = useRef(Date.now())
+  const started = useRef(activeNow())
   const [style, setStyle] = useState<'flip' | 'mc'>('mc')
   const [poolOf, setPoolOf] = useState<((c: Card) => Card[]) | null>(null)
   const [pace, setPace] = useState(0)
@@ -102,7 +104,7 @@ export default function Review() {
       setQueue(q)
       setTotal(q.length)
       setLabel(label)
-      started.current = Date.now()
+      started.current = activeNow()
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.toString()])
@@ -120,7 +122,7 @@ export default function Review() {
   )
   const answer = async (r: Grade) => {
     if (!card || !shown) return
-    advance(card, await rate(card, r, Date.now() - started.current), r !== Rating.Again)
+    advance(card, await rate(card, r, activeNow() - started.current), r !== Rating.Again)
   }
   /** Multiple choice: the app picks the rating (grade.ts), you only answer. */
   const answerMc = async (correct: boolean, guessed = false, ms = 0) => {
@@ -135,7 +137,7 @@ export default function Review() {
   const advance = (card: Card, srs: NonNullable<Card['srs']>, ok: boolean) => {
     setShown(false)
     setSeq((n) => n + 1)
-    started.current = Date.now()
+    started.current = activeNow()
     if (onePass) {
       // Never re-ask tonight: a miss is already rated Again, so it's due in the next normal Review.
       setTally((t) => (ok ? { ...t, right: t.right + 1 } : { ...t, wrong: t.wrong + 1 }))
@@ -202,7 +204,8 @@ export default function Review() {
             </>
           ) : (
             `${queue.length} left`
-          )}
+          )}{' '}
+          <PauseControl />
         </span>
       </div>
       <SessionBar done={done} total={total} />

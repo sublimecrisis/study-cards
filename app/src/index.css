@@ -504,3 +504,10 @@ mark.key-word { background: #fde68a; color: #422006; border-radius: 3px; padding
 .bedtime-missed { list-style: none; padding: 0; margin: 0.8rem 0; display: grid; gap: 0.6rem; text-align: left; }
 .bedtime-missed li { background: var(--surface-2); border-radius: 10px; padding: 0.6rem 0.8rem; display: grid; gap: 0.2rem; font-size: 0.9rem; }
 .bedtime-done { display: inline-block; margin-top: 0.6rem; }
+
+/* study pause */
+.pause-btn { min-height: 1.9rem; padding: 0.2rem 0.6rem; font-size: 0.8rem; margin-left: 0.3rem; }
+.pause-screen { position: fixed; inset: 0; z-index: 30; background: var(--bg); display: grid; place-items: center; padding: 1rem; }
+.pause-card { max-width: 360px; text-align: center; }
+.pause-icon { font-size: 2.6rem; }
+.pause-card h2 { margin: 0.4rem 0; }

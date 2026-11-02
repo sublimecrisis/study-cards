@@ -12,6 +12,8 @@ import { recordOutcome } from '../srs'
 import type { Card, QuizResult } from '../types'
 import { prepareScenarios } from '../scenario'
 import { shuffle } from '../scope'
+import { activeNow } from '../studyClock'
+import PauseControl from '../PauseControl'
 
 const QUICK: QuizConfig = { count: 10, types: ['mc', 'tf', 'mc', 'written'], answerWith: 'both' }
 // Ordering/matching come from drill cards themselves, so they aren't a choice here.
@@ -50,7 +52,7 @@ export default function Quiz() {
 
   useEffect(() => {
     if (!qs || result) return
-    const id = setInterval(() => setElapsed(Date.now() - t0.current), 1000)
+    const id = setInterval(() => setElapsed(activeNow() - t0.current), 1000)
     return () => clearInterval(id)
   }, [qs, result])
 
@@ -75,14 +77,14 @@ export default function Quiz() {
     setAnswers([])
     setResult(null)
     setElapsed(0)
-    t0.current = qStart.current = Date.now()
+    t0.current = qStart.current = activeNow()
   }
 
   const onAnswer = async (rightAnswer: boolean, guessed = false) => {
     const q = qs![i]
-    recordOutcome(q.card, rightAnswer, 'quiz', Date.now() - qStart.current, guessed)
+    recordOutcome(q.card, rightAnswer, 'quiz', activeNow() - qStart.current, guessed)
     const correct = rightAnswer && !guessed // guesses go on the "missed" list for retry
-    qStart.current = Date.now()
+    qStart.current = activeNow()
     const a = [...answers, correct]
     setAnswers(a)
     if (i + 1 < qs!.length) return setI(i + 1)
@@ -93,7 +95,7 @@ export default function Quiz() {
       label,
       total: qs!.length,
       correct: a.filter(Boolean).length,
-      ms: Date.now() - t0.current,
+      ms: activeNow() - t0.current,
       missed: qs!.filter((_, k) => !a[k]).map((x) => x.card.id),
       dirty: 1,
     }
@@ -161,7 +163,7 @@ export default function Quiz() {
           <Link to={back} className="crumb">← {label}</Link>
           <span className="muted small">
             {i + 1} / {qs.length}
-            {timer && ` · ${fmtTime(elapsed)}`}
+            {timer && ` · ${fmtTime(elapsed)}`} <PauseControl />
           </span>
         </div>
         <SessionBar done={i} total={qs.length} />

@@ -3,6 +3,7 @@ import CardTools from './CardTools'
 import { GuessedButton, Kbd } from './components'
 import type { Question } from './quizgen'
 import { RichText } from './rich'
+import { activeNow } from './studyClock'
 
 /**
  * Ordering: tap the items in the right sequence (tap a placed item to take it back).
@@ -14,10 +15,10 @@ export default function DrillQuestion({ q, onAnswer }: { q: Question; onAnswer: 
   const [placed, setPlaced] = useState<string[]>([])
   const [picks, setPicks] = useState<Record<number, string>>({})
   const [checked, setChecked] = useState<boolean | null>(null)
-  const [shownAt] = useState(() => Date.now())
+  const [shownAt] = useState(() => activeNow())
   const [ms, setMs] = useState(0)
   const check = (ok: boolean) => {
-    setMs(Date.now() - shownAt)
+    setMs(activeNow() - shownAt)
     setChecked(ok)
   }
 

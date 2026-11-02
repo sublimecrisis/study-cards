@@ -9,6 +9,7 @@ import WhyPanel from './WhyPanel'
 import { recordAnswer } from './confusions'
 import Diagram from './Diagram'
 import DrillQuestion from './DrillQuestion'
+import { activeNow } from './studyClock'
 
 const SIDE_LABEL = { term: 'Term', definition: 'Definition' }
 
@@ -27,7 +28,7 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
   const [result, setResult] = useState<boolean | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const next = useRef<HTMLButtonElement>(null)
-  const shownAt = useRef(Date.now())
+  const shownAt = useRef(activeNow())
   const ch = useChapter(q.card.setId)
   const answerMs = useRef(0) // question shown → answer picked (not → Continue)
 
@@ -45,7 +46,7 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
   const choose = (i: number) => {
     if (result !== null) return
     setPicked(i)
-    answerMs.current = Date.now() - shownAt.current
+    answerMs.current = activeNow() - shownAt.current
     const ok = q.type === 'mc' || q.type === 'scenario' ? i === q.correctIndex : (i === 1) === q.tfTrue
     setResult(ok)
     // Remember mix-ups: which card's answer you picked instead (scenario options aren't cards).
@@ -54,7 +55,7 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
   }
   const submitWritten = (dontKnow = false) => {
     if (result !== null) return
-    answerMs.current = Date.now() - shownAt.current
+    answerMs.current = activeNow() - shownAt.current
     setResult(dontKnow ? false : gradeWritten(typed, answerText))
   }
 

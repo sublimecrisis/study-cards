@@ -11,6 +11,8 @@ import { oncePerConcept } from '../twins'
 import { interleave, loadCoursePools, loadScope, readScope } from '../scope'
 import { isDue, recordOutcome, statusOf } from '../srs'
 import type { Card } from '../types'
+import { activeNow } from '../studyClock'
+import PauseControl from '../PauseControl'
 
 const CHECKPOINT = 10 // answers between progress check-ins
 
@@ -35,7 +37,7 @@ export default function Learn() {
   const [right, setRight] = useState(0)
   const [pause, setPause] = useState(false)
   const [summary, setSummary] = useState<{ when: string; count: number }[] | null>(null)
-  const started = useRef(Date.now())
+  const started = useRef(activeNow())
   const partners = useRef<Map<string, string[]>>(new Map())
   const poolOf = useRef<((c: Card) => Card[]) | null>(null)
   const [twins, setTwins] = useState<Map<string, string>>(new Map())
@@ -67,7 +69,7 @@ export default function Learn() {
     const typed = cur.stage === 1 && !mcOnly
     const pool = poolOf.current?.(cur.card) ?? all!
     setQ(makeQuestion(cur.card, pool, typed ? 'written' : 'mc', typed ? 'term' : 'definition', { partner: partnerOf(cur.card, partners.current, pool) }))
-    started.current = Date.now()
+    started.current = activeNow()
   }
 
   const begin = () => {
@@ -83,7 +85,7 @@ export default function Learn() {
 
   const onAnswer = (rightAnswer: boolean, guessed = false) => {
     const correct = rightAnswer && !guessed // a guess counts as a miss: the card comes back
-    const ms = Date.now() - started.current
+    const ms = activeNow() - started.current
     const { state, learned } = answer(st!, correct)
     if (learned) recordOutcome(learned.card, learned.misses === 0, 'learn', ms)
     setSt(state)
@@ -124,7 +126,7 @@ export default function Learn() {
         <Link to={back} className="crumb">← {label}</Link>
         {st && (
           <span className="muted small">
-            {st.learned.length} / {total} learned
+            {st.learned.length} / {total} learned <PauseControl />
           </span>
         )}
       </div>
