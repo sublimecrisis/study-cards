@@ -8,7 +8,7 @@ import WhyPanel from '../WhyPanel'
 import { CardImage, RichText } from '../rich'
 import Diagram from '../Diagram'
 import { interleave, loadCoursePools, loadScope, readScope } from '../scope'
-import { isDue, preview, Rating, rate } from '../srs'
+import { isDue, preview, Rating, rate, startOfDay } from '../srs'
 import { getSettings, loadDayStats, saveSettings } from '../stats'
 import { makeQuestion, type Question } from '../quizgen'
 import QuestionView from '../QuestionView'
@@ -17,6 +17,7 @@ import type { Card } from '../types'
 import type { Grade } from 'ts-fsrs'
 import { daysUntil, examBoost } from '../exam'
 import { db } from '../db'
+import { BEDTIME_DONE_KEY } from '../bedtime'
 import { loadPairs, partnerMap, partnerOf } from '../confusions'
 
 const BUTTONS: { r: Grade; label: string; cls: string }[] = [
@@ -56,6 +57,10 @@ export default function Review() {
   const [seq, setSeq] = useState(0) // bumps per answer so a re-asked card gets a fresh question
   const [note, setNote] = useState<string | null>(null)
   const [partners, setPartners] = useState<Map<string, string[]>>(new Map())
+  // Before bed = one pass: every card asked once, misses go back into the regular schedule.
+  const onePass = scope.filter === 'tonight'
+  const [tally, setTally] = useState({ right: 0, wrong: 0 })
+  const [missed, setMissed] = useState<Card[]>([])
 
   useEffect(() => {
     ;(async () => {
@@ -110,7 +115,7 @@ export default function Review() {
   )
   const answer = async (r: Grade) => {
     if (!card || !shown) return
-    advance(card, await rate(card, r, Date.now() - started.current))
+    advance(card, await rate(card, r, Date.now() - started.current), r !== Rating.Again)
   }
   /** Multiple choice: the app picks the rating (grade.ts), you only answer. */
   const answerMc = async (correct: boolean, guessed = false, ms = 0) => {
@@ -120,12 +125,20 @@ export default function Review() {
     const g = autoGrade({ correct, guessed, ms, expectedMs: chars ? expectedMs(chars, pace) : undefined })
     const srs = await rate(card, g.rating, ms, { qtype: drill ? (q.type as 'order' | 'match') : 'mc', chars, correct: correct && !guessed })
     setNote(`Next review ${when(srs.due)}: ${REASON_LABEL[g.reason]}.`)
-    advance(card, srs)
+    advance(card, srs, correct && !guessed)
   }
-  const advance = (card: Card, srs: NonNullable<Card['srs']>) => {
+  const advance = (card: Card, srs: NonNullable<Card['srs']>, ok: boolean) => {
     setShown(false)
     setSeq((n) => n + 1)
     started.current = Date.now()
+    if (onePass) {
+      // Never re-ask tonight: a miss is already rated Again, so it's due in the next normal Review.
+      setTally((t) => (ok ? { ...t, right: t.right + 1 } : { ...t, wrong: t.wrong + 1 }))
+      if (!ok) setMissed((m) => [...m, card])
+      setDone((d) => d + 1)
+      setQueue((q) => q!.slice(1))
+      return
+    }
     setQueue((q) => {
       const rest = q!.slice(1)
       // Still in short-term learning (due within ~20 min)? See it again this session.
@@ -150,6 +163,8 @@ export default function Review() {
   if (!queue) return null
   const back = scope.kind === 'set' ? `/set/${scope.id}` : scope.kind === 'course' ? `/course/${scope.id}` : '/'
 
+  if (!card && onePass && total)
+    return <BedtimeDone right={tally.right} missed={missed} />
   if (!card)
     return (
       <div className="study">
@@ -175,7 +190,14 @@ export default function Review() {
       <div className="study-head">
         <Link to={back} className="crumb">← {label}</Link>
         <span className="muted small">
-          {boost.on && <span className="boost-pill" title="Exam boost is adding cards you'd likely forget by exam day">⚡ Boost on</span>} {queue.length} left
+          {boost.on && <span className="boost-pill" title="Exam boost is adding cards you'd likely forget by exam day">⚡ Boost on</span>}{' '}
+          {onePass ? (
+            <>
+              {done + 1} / {total} · <span className="tally-right">✓ {tally.right}</span> · <span className="tally-wrong">✕ {tally.wrong}</span>
+            </>
+          ) : (
+            `${queue.length} left`
+          )}
         </span>
       </div>
       <SessionBar done={done} total={total} />
@@ -257,4 +279,50 @@ function when(due: number) {
   if (ms < 3_600_000) return `in ${Math.max(1, Math.round(ms / 60_000))} min`
   const days = Math.round(ms / 86_400_000)
   return days < 1 ? `in ${Math.round(ms / 3_600_000)} h` : days === 1 ? 'tomorrow' : `in ${days} days`
+}
+
+/** End of a Before bed pass: what you got, and the misses to read once before sleep. */
+function BedtimeDone({ right, missed }: { right: number; missed: Card[] }) {
+  useEffect(() => {
+    try {
+      localStorage.setItem(BEDTIME_DONE_KEY, String(startOfDay(Date.now())))
+    } catch {
+      /* the Home button just keeps showing */
+    }
+  }, [])
+  return (
+    <div className="study">
+      <div className="done-box">
+        <div className="big">🌙</div>
+        <h1>Before bed done</h1>
+        <p>
+          <b className="tally-right">{right} right</b> · <b className="tally-wrong">{missed.length} to review</b>
+        </p>
+        {missed.length > 0 && (
+          <>
+            <p className="muted small">Read these once before you sleep. They're back in your schedule and will come up in your next Review.</p>
+            <ul className="bedtime-missed">
+              {missed.map((c) => (
+                <li key={c.id}>
+                  <b>
+                    <RichText text={c.term} />
+                  </b>
+                  <RichText text={c.definition} mark={c.keyword} />
+                  {c.hook && <div className="muted small">🪝 {c.hook.text}</div>}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        <div className="actions">
+          <Link className="btn primary" to="/">
+            Done for tonight
+          </Link>
+          <Link className="btn" to="/hooks">
+            Memory hooks
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
 }

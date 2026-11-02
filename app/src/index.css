@@ -499,3 +499,8 @@ mark.key-word { background: #fde68a; color: #422006; border-radius: 3px; padding
 .ch-dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; }
 .face-chapter { text-align: right; margin-bottom: 0.3rem; }
 .q-prompt .ch-chip { justify-self: start; margin: 0 0 0.35rem; }
+.tally-right { color: var(--right); }
+.tally-wrong { color: var(--wrong); }
+.bedtime-missed { list-style: none; padding: 0; margin: 0.8rem 0; display: grid; gap: 0.6rem; text-align: left; }
+.bedtime-missed li { background: var(--surface-2); border-radius: 10px; padding: 0.6rem 0.8rem; display: grid; gap: 0.2rem; font-size: 0.9rem; }
+.bedtime-done { display: inline-block; margin-top: 0.6rem; }

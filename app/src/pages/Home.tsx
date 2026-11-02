@@ -5,7 +5,7 @@ import { ProgressBar } from '../components'
 import { addCourse, db } from '../db'
 import { breakdown, estMinutes, getSettings, loadDayStats } from '../stats'
 import { daysUntil } from '../exam'
-import { bedtimeCards, isBedtime } from '../bedtime'
+import { bedtimeCards, bedtimeDoneToday, isBedtime } from '../bedtime'
 import { startOfDay } from '../srs'
 import { scopeQuery } from '../scope'
 import type { Card } from '../types'
@@ -88,11 +88,14 @@ export default function Home() {
                 Start review
               </Link>
             )}
-            {tonight > 0 && (
-              <Link to="/study/review?scope=all&filter=tonight" className="btn bedtime">
-                🌙 Before bed · {tonight} cards
-              </Link>
-            )}
+            {tonight > 0 &&
+              (bedtimeDoneToday() ? (
+                <span className="bedtime-done muted small">✓ Before bed done</span>
+              ) : (
+                <Link to="/study/review?scope=all&filter=tonight" className="btn bedtime">
+                  🌙 Before bed · {tonight} cards
+                </Link>
+              ))}
           </div>
           <div className="today-stats">
             <div className="stat">

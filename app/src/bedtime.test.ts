@@ -26,3 +26,21 @@ describe('before-bed review', () => {
     expect(isBedtime(new Date(2026, 10, 2, 20, 0).getTime())).toBe(true)
   })
 })
+
+describe('missed today = latest answer wrong', () => {
+  it('a card fixed later today is no longer "missed"', () => {
+    const now = new Date(2026, 10, 2, 21).getTime()
+    const c = (id: string): Card => ({
+      id, setId: 's', position: 0, term: id, definition: '', notes: '', tags: [], starred: 0, needsCheck: 0,
+      termImage: null, defImage: null, createdAt: 0, updatedAt: 0, deleted: 0, dirty: 0,
+      srs: { state: 2, stability: 50, difficulty: 5, scheduled_days: 1, reps: 2, lapses: 0, learning_steps: 0, due: now, last_review: now - 3_600_000 },
+    })
+    const logs = [
+      { cardId: 'fixed', correct: 0 as const, at: now - 3 * 3_600_000 },
+      { cardId: 'fixed', correct: 1 as const, at: now - 1 * 3_600_000 },
+      { cardId: 'still', correct: 1 as const, at: now - 3 * 3_600_000 },
+      { cardId: 'still', correct: 0 as const, at: now - 2 * 3_600_000 },
+    ]
+    expect(bedtimeCards([c('fixed'), c('still')], logs, now).map((x) => x.id)).toEqual(['still'])
+  })
+})
