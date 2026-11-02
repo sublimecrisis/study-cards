@@ -6,6 +6,8 @@ import App from './App.tsx'
 import { startSync } from './sync'
 
 startSync()
+// Twin cards (same concept in several chapters) share one schedule: line them up once per launch, after the first sync.
+setTimeout(() => void import('./twinStore').then((t) => t.alignTwins()), 8000)
 
 // Ask the browser not to evict our database under storage pressure.
 navigator.storage?.persist?.().catch(() => {})

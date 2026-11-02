@@ -6,6 +6,8 @@ import { answer, start, type Item, type LearnState } from '../learnQueue'
 import QuestionView from '../QuestionView'
 import { makeQuestion, type Question } from '../quizgen'
 import { loadPairs, partnerMap, partnerOf } from '../confusions'
+import { twinIndex } from '../twinStore'
+import { oncePerConcept } from '../twins'
 import { interleave, loadCoursePools, loadScope, readScope } from '../scope'
 import { isDue, recordOutcome, statusOf } from '../srs'
 import type { Card } from '../types'
@@ -36,10 +38,12 @@ export default function Learn() {
   const started = useRef(Date.now())
   const partners = useRef<Map<string, string[]>>(new Map())
   const poolOf = useRef<((c: Card) => Card[]) | null>(null)
+  const [twins, setTwins] = useState<Map<string, string>>(new Map())
 
   useEffect(() => {
     loadPairs().then((p) => (partners.current = partnerMap(p)))
     loadCoursePools().then((f) => (poolOf.current = f))
+    twinIndex().then((t) => setTwins(t.group))
     loadScope(scope).then(({ cards, label }) => {
       setAll(cards)
       setLabel(label)
@@ -53,8 +57,9 @@ export default function Learn() {
     const due = all.filter((c) => statusOf(c) !== 'new' && isDue(c)).sort((a, b) => a.srs!.due - b.srs!.due)
     const fresh = interleave(all.filter((c) => statusOf(c) === 'new')) // mix chapters
     const rest = all.filter((c) => statusOf(c) !== 'new' && !isDue(c))
-    return { due, fresh, rest, items: [...due, ...fresh, ...(includeAll ? rest : [])] }
-  }, [all, includeAll])
+    // Twins (same concept in several chapters) share a schedule: learn each concept once.
+    return { due, fresh, rest, items: oncePerConcept([...due, ...fresh, ...(includeAll ? rest : [])], twins) }
+  }, [all, includeAll, twins])
 
   const ask = (s: LearnState) => {
     const cur = s.queue[0]

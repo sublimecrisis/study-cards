@@ -19,6 +19,8 @@ import { daysUntil, examBoost } from '../exam'
 import { db } from '../db'
 import { BEDTIME_DONE_KEY } from '../bedtime'
 import { loadPairs, partnerMap, partnerOf } from '../confusions'
+import { twinIndex } from '../twinStore'
+import { oncePerConcept } from '../twins'
 
 const BUTTONS: { r: Grade; label: string; cls: string }[] = [
   { r: Rating.Again, label: 'Again', cls: 'again' },
@@ -90,6 +92,9 @@ export default function Review() {
       setPace(paceFrom(await db.reviews.where('at').above(Date.now() - 30 * 86_400_000).toArray()))
       setStyle(settings.reviewStyle)
       setPartners(partnerMap(await loadPairs()))
+      // Twins (same concept in several chapters) share a schedule: ask each concept once per session.
+      const { group } = await twinIndex()
+      q.splice(0, q.length, ...oncePerConcept(q, group))
       if (scope.filter === 'tonight') {
         q.splice(0, q.length, ...cards) // before bed: just these, nothing new or boosted
         setBoost({ on: false, ids: new Set() })

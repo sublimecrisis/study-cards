@@ -1,5 +1,6 @@
 import { createEmptyCard, fsrs, FSRS6_DEFAULT_DECAY, Rating, type Card as FsrsCard, type Grade } from 'ts-fsrs'
 import { db, newId } from './db'
+import { shareSchedule } from './twinStore'
 import type { Card, ReviewLog, Srs, StudyMode } from './types'
 
 const scheduler = fsrs()
@@ -108,6 +109,7 @@ async function log(card: Card, mode: StudyMode, rating: 0 | Grade, correct: bool
 export async function rate(card: Card, rating: Grade, ms: number, extra: Pick<ReviewLog, 'qtype' | 'chars'> & { correct?: boolean } = {}) {
   const srs = nextSrs(card.srs, rating)
   await db.cards.update(card.id, { srs, updatedAt: Date.now(), dirty: 1 })
+  await shareSchedule(card.id, srs) // twins (same concept in other chapters) share the schedule
   const { correct = rating !== Rating.Again, ...fields } = extra
   await log(card, 'review', rating, correct, ms, fields)
   return srs
@@ -126,7 +128,11 @@ export async function recordOutcome(card: Card, correct: boolean, mode: 'learn' 
   if (guessed) rating = Rating.Hard
   else if (!correct) rating = Rating.Again
   else if (statusOf(fresh) === 'new' || isDue(fresh)) rating = Rating.Good
-  if (rating) await db.cards.update(card.id, { srs: nextSrs(fresh.srs, rating), updatedAt: Date.now(), dirty: 1 })
+  if (rating) {
+    const srs = nextSrs(fresh.srs, rating)
+    await db.cards.update(card.id, { srs, updatedAt: Date.now(), dirty: 1 })
+    await shareSchedule(card.id, srs)
+  }
   await log(fresh, mode, rating, correct && !guessed, ms)
 }
 

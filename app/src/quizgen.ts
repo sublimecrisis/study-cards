@@ -1,3 +1,4 @@
+import { sameAnswer } from './twins'
 import { shuffle } from './scope'
 import type { Card, Scenario } from './types'
 
@@ -46,7 +47,7 @@ export function distractorCards(card: Card, pool: Card[], s: 'term' | 'definitio
   const rw = words(right)
   const seen = new Set([right.toLowerCase()])
   const scored = pool
-    .filter((c) => c.id !== card.id && !c.drill && !c.occlusion)
+    .filter((c) => c.id !== card.id && !c.drill && !c.occlusion && !sameAnswer(card, c)) // never offer a twin / same answer as a wrong option
     .map((c) => {
       const t = side(c, s).trim()
       let shared = 0

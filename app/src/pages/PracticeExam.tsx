@@ -1,3 +1,5 @@
+import { twinIndex } from '../twinStore'
+import { oncePerConcept } from '../twins'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Kbd, SessionBar } from '../components'
@@ -70,7 +72,7 @@ export default function PracticeExam() {
 
   const start = async () => {
     const n = Math.min(length, pool.length)
-    let picked = shuffle(pool).slice(0, n)
+    let picked = oncePerConcept(shuffle(pool), (await twinIndex()).group).slice(0, n) // each concept once
     // About 40% exam-style scenario questions (AI-written once per card, then cached).
     const nScen = useScenarios ? Math.round(n * 0.4) : 0
     if (nScen) {

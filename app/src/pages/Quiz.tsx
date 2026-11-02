@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { SessionBar } from '../components'
 import { db, newId } from '../db'
 import QuestionView from '../QuestionView'
+import { twinIndex } from '../twinStore'
+import { oncePerConcept } from '../twins'
 import { buildQuiz, type AnswerWith, type QType, type Question, type QuizConfig } from '../quizgen'
 import { CardImage, RichText } from '../rich'
 import { loadScope, readScope, scopeKey } from '../scope'
@@ -55,6 +57,7 @@ export default function Quiz() {
   const start = async (from: Card[], c: QuizConfig, retry = false) => {
     if (!retry) lastCfg.current = c // "New quiz" repeats the original settings, not the retry's size
     let pickFrom = from.filter((x) => !(c.types.length === 1 && c.types[0] === 'scenario' && x.occlusion))
+    pickFrom = oncePerConcept(shuffle(pickFrom), (await twinIndex()).group) // don't ask the same concept twice
     if (c.types.includes('scenario')) {
       // Generate the AI questions this quiz needs before it starts (cached afterwards).
       pickFrom = shuffle(pickFrom).slice(0, Math.min(c.count, pickFrom.length))
