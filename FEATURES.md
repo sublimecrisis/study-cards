@@ -155,7 +155,7 @@ Toggle in Review. The app rates each answer (wrong/guessed/slow/normal, against 
 Easy; cards held 7+ days get a harder 5-option question with "None of these". Plan:
 ~/.claude/plans/squishy-dreaming-thacker.md.
 
-### Memory boosts, planned 2026-11-01 (Paul's picks), build in this order
+### Memory boosts, planned 2026-11-01 (Paul's picks) — DONE 2026-11-01
 Evidence note: "learning styles" and color theory are weak; the app already covers the big
 ones (retrieval practice, spacing, pretesting, dual coding, instant feedback). These add:
 
@@ -186,8 +186,8 @@ ones (retrieval practice, spacing, pretesting, dual coding, instant feedback). T
    Normal grading. Note: sleep consolidates what was studied last.
 5. **Chapter colors + key word.** Each chapter/set gets a fixed color (chosen from a palette
    tested to stay distinguishable for color-blind readers, light and dark mode) shown as a
-   stripe on cards, questions and set lists. `**word**` in card text renders highlighted;
-   memory hooks fill in the key word automatically, and you can bold one yourself in Edit.
+   stripe on cards, questions and set lists. a key word per card is highlighted when the answer shows;
+   memory hooks fill it in automatically, and you can set one yourself in Edit.
 
 ### Batch 2: before the retake (Nov 10 → Dec 20)
 5. **Score report → plan**: enter NASM domain results; the app re-weights Review and
