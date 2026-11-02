@@ -1,4 +1,5 @@
 // Study Cards - "Explain why" server function (Supabase Edge Function, Deno).
+// Modes: explanation (default), 'scenario' (practice question), 'hook' (memory hook).
 // Holds the OpenRouter key server-side so it never ships in the public app.
 // Only signed-in users can call it (Supabase verifies the JWT before this runs).
 //
@@ -55,9 +56,20 @@ Deno.serve(async (req) => {
   ].filter(Boolean)
 
   const scenario = b.mode === 'scenario'
+  const hook = b.mode === 'hook'
   const related = (Array.isArray(b.related) ? b.related : []).slice(0, 12).map((x) => clip(x, 120))
 
-  const system = scenario
+  const system = hook
+    ? [
+        'You create memory hooks for flashcards, for a student cramming for a certification exam.',
+        'Write ONE short, memorable hook (max 40 words) that links the term to its meaning: an acronym,',
+        'a mnemonic phrase, a vivid or funny mental image, or a tiny story. Prefer the keyword method',
+        '(a sound-alike word turned into an image) for unfamiliar terms, and acronyms for ordered lists.',
+        'It must stay accurate to the flashcard. Also pick the single most important word or short phrase',
+        'from the definition to highlight (copy it EXACTLY as it appears in the definition).',
+        'Reply with ONLY a JSON object, no markdown: {"hook": string, "kind": "acronym" | "mnemonic" | "image" | "story", "keyword": string}.',
+      ].join(' ')
+    : scenario
     ? [
         'You write certification exam practice questions.',
         'Given one flashcard, write ONE realistic scenario-based multiple-choice question that tests',
@@ -77,7 +89,9 @@ Deno.serve(async (req) => {
     'if the flashcard itself looks wrong or outdated, say so briefly.',
   ].join(' ')
 
-  const userText = scenario
+  const userText = hook
+    ? [`Course: ${course || 'unknown'}`, `Flashcard term: ${term}`, `Flashcard definition: ${definition}`, notes && `Notes: ${notes}`].filter(Boolean).join('\n')
+    : scenario
     ? [`Course: ${course || 'unknown'}`, `Flashcard term: ${term}`, `Flashcard definition: ${definition}`, notes && `Notes: ${notes}`, related.length && `Related concepts: ${related.join('; ')}`].filter(Boolean).join('\n')
     : lines.join('\n')
 
@@ -92,7 +106,7 @@ Deno.serve(async (req) => {
     body: JSON.stringify({
       model: Deno.env.get('OPENROUTER_MODEL') || 'anthropic/claude-haiku-5.5',
       max_tokens: 900,
-      temperature: scenario ? 0.6 : 0.3,
+      temperature: scenario || hook ? 0.7 : 0.3,
       // Explanations don't need hidden reasoning; it also ate the output budget and cut answers off.
       reasoning: { enabled: false },
       messages: [
@@ -111,6 +125,18 @@ Deno.serve(async (req) => {
   const choice = j?.choices?.[0]
   const text = choice?.message?.content ?? ''
   if (choice?.finish_reason === 'length') console.warn('explanation hit max_tokens')
+  if (hook) {
+    try {
+      const h = JSON.parse(String(text).slice(String(text).indexOf('{'), String(text).lastIndexOf('}') + 1))
+      if (typeof h.hook !== 'string' || !h.hook.trim()) throw new Error('shape')
+      const kind = ['acronym', 'mnemonic', 'image', 'story'].includes(h.kind) ? h.kind : 'mnemonic'
+      // Only keep the keyword if it really appears in the definition, so the app can highlight it.
+      const kw = typeof h.keyword === 'string' && h.keyword.trim() && definition.includes(h.keyword.trim()) ? h.keyword.trim() : ''
+      return new Response(JSON.stringify({ hook: { text: h.hook.trim(), kind, keyword: kw } }), { headers })
+    } catch {
+      return new Response(JSON.stringify({ error: 'The AI returned an unusable hook - try again.' }), { status: 502, headers })
+    }
+  }
   if (scenario) {
     // Pull the JSON object out even if the model wrapped it in prose or a code fence; validate the shape.
     try {

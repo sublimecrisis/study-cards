@@ -102,3 +102,12 @@ describe('scenario questions', () => {
     expect(makeQuestion(plain, [plain, card('x', 'X', 'Y'), card('z', 'Z', 'W')], 'scenario', 'both').type).not.toBe('scenario')
   })
 })
+
+describe('interleave', () => {
+  it('takes one card from each chapter in turn, keeping each chapter in order', async () => {
+    const { interleave } = await import('./scope')
+    const c = (id: string, setId: string) => ({ id, setId })
+    const out = interleave([c('a1', 'A'), c('a2', 'A'), c('a3', 'A'), c('b1', 'B'), c('c1', 'C'), c('c2', 'C')])
+    expect(out.map((x) => x.id)).toEqual(['a1', 'b1', 'c1', 'a2', 'c2', 'a3'])
+  })
+})

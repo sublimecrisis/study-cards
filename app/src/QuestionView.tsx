@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import CardTools from './CardTools'
+import HookPanel from './HookPanel'
+import { ChapterChip, useChapter } from './chapters'
 import { GuessedButton, Kbd } from './components'
 import { gradeWritten, NONE_OF_THESE, type Question } from './quizgen'
 import { CardImage, RichText } from './rich'
 import WhyPanel from './WhyPanel'
+import { recordAnswer } from './confusions'
 import Diagram from './Diagram'
 import DrillQuestion from './DrillQuestion'
 
@@ -25,6 +28,7 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
   const input = useRef<HTMLInputElement>(null)
   const next = useRef<HTMLButtonElement>(null)
   const shownAt = useRef(Date.now())
+  const ch = useChapter(q.card.setId)
   const answerMs = useRef(0) // question shown → answer picked (not → Continue)
 
   const answerText = q.scenario ? q.options![q.correctIndex!] : q.answerSide === 'term' ? q.card.term : q.card.definition
@@ -42,7 +46,11 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
     if (result !== null) return
     setPicked(i)
     answerMs.current = Date.now() - shownAt.current
-    setResult(q.type === 'mc' || q.type === 'scenario' ? i === q.correctIndex : (i === 1) === q.tfTrue)
+    const ok = q.type === 'mc' || q.type === 'scenario' ? i === q.correctIndex : (i === 1) === q.tfTrue
+    setResult(ok)
+    // Remember mix-ups: which card's answer you picked instead (scenario options aren't cards).
+    const chosen = q.type === 'mc' ? q.optionCards?.[i] : q.type === 'tf' && i === 1 && !q.tfTrue ? q.shownCard : undefined
+    if (q.type !== 'scenario') void recordAnswer(q.card.id, ok, ok ? undefined : chosen?.id)
   }
   const submitWritten = (dontKnow = false) => {
     if (result !== null) return
@@ -64,9 +72,10 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
 
   return (
     <div className="question">
-      <div className="q-prompt">
+      <div className="q-prompt ch-stripe" style={ch ? { borderLeftColor: `var(--ch-${ch.slot})` } : undefined}>
         <span className="q-label">{q.scenario ? 'Scenario' : SIDE_LABEL[q.promptSide]}</span>
-        <RichText text={promptText} />
+        <ChapterChip setId={q.card.setId} />
+        <RichText text={promptText} mark={result !== null && q.promptSide === 'definition' && !q.scenario ? q.card.keyword : undefined} />
         <CardTools card={q.card} />
         {q.scenario ? null : q.card.occlusion ? <Diagram card={q.card} revealed={result !== null} /> : <CardImage id={promptImg} className="face-img" />}
       </div>
@@ -83,14 +92,14 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
               return (
                 <button key={i} className={`option ${state}`} onClick={() => choose(i)} disabled={result !== null}>
                   <Kbd>{i + 1}</Kbd>
-                  <RichText text={o} />
+                  <RichText text={o} mark={result !== null && i === q.correctIndex && q.answerSide === 'definition' && !q.scenario ? q.card.keyword : undefined} />
                 </button>
               )
             })}
           </div>
           {result !== null && q.hard && q.options![q.correctIndex!] === NONE_OF_THESE && (
             <div className="q-correct">
-              The real answer wasn't listed: <RichText text={answerText} />
+              The real answer wasn't listed: <RichText text={answerText} mark={q.answerSide === 'definition' && !q.scenario ? q.card.keyword : undefined} />
             </div>
           )}
         </>
@@ -115,7 +124,7 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
           </div>
           {result !== null && !q.tfTrue && (
             <div className="q-correct">
-              Correct {SIDE_LABEL[q.answerSide].toLowerCase()}: <RichText text={answerText} />
+              Correct {SIDE_LABEL[q.answerSide].toLowerCase()}: <RichText text={answerText} mark={q.answerSide === 'definition' && !q.scenario ? q.card.keyword : undefined} />
             </div>
           )}
         </>
@@ -155,7 +164,7 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
           )}
           {result !== null && (
             <div className="q-correct">
-              {result ? 'Correct' : 'Answer'}: <RichText text={answerText} />
+              {result ? 'Correct' : 'Answer'}: <RichText text={answerText} mark={q.answerSide === 'definition' && !q.scenario ? q.card.keyword : undefined} />
               {!result && typed.trim() && (
                 <button type="button" className="btn link small" onClick={() => setResult(true)}>
                   I was right
@@ -187,6 +196,8 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
           chosenCard={q.type === 'mc' ? q.optionCards?.[picked!] : q.type === 'tf' && picked === 1 && !q.tfTrue ? q.shownCard : undefined}
         />
       )}
+
+      {result !== null && !q.scenario && <HookPanel card={q.card} />}
 
       {result !== null && (
         <div className={`feedback ${result ? 'right' : 'wrong'}`}>

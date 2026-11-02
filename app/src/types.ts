@@ -46,6 +46,16 @@ export interface Card extends Base {
   scenarios?: Scenario[]
   /** "Label the diagram" card: termImage is the diagram, `box` is the part to name (the definition is its label). */
   occlusion?: Occlusion | null
+  /** AI memory hook (mnemonic / acronym / image / story), made on request, synced. */
+  hook?: MemoryHook | null
+  /** Word or phrase in the definition to highlight when the answer is shown ('' = none). */
+  keyword?: string
+}
+
+export interface MemoryHook {
+  text: string
+  kind: 'acronym' | 'mnemonic' | 'image' | 'story'
+  at: number
 }
 
 export type Drill = { kind: 'order'; items: string[] } | { kind: 'match'; pairs: [string, string][] }

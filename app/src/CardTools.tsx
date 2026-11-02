@@ -13,16 +13,18 @@ export default function CardTools({ card }: { card: Card }) {
   const [editing, setEditing] = useState(false)
   const [term, setTerm] = useState('')
   const [def, setDef] = useState('')
+  const [kw, setKw] = useState('')
   const [saved, setSaved] = useState(false)
 
   const open = () => {
     setTerm(live.term)
     setDef(live.definition)
+    setKw(live.keyword ?? '')
     setSaved(false)
     setEditing(true)
   }
   const save = async () => {
-    await updateCard(card.id, { term: term.trim(), definition: def.trim() })
+    await updateCard(card.id, { term: term.trim(), definition: def.trim(), keyword: kw.trim() })
     setEditing(false)
     setSaved(true)
   }
@@ -55,6 +57,11 @@ export default function CardTools({ card }: { card: Card }) {
             Definition
             <textarea rows={3} value={def} onChange={(e) => setDef(e.target.value)} />
           </label>
+          <label className="small muted">
+            Key word to highlight (optional, must appear in the definition)
+            <input value={kw} onChange={(e) => setKw(e.target.value)} />
+          </label>
+          {kw.trim() && !def.includes(kw.trim()) && <span className="small" style={{ color: 'var(--wrong)' }}>Not found in the definition, so it won't be highlighted.</span>}
           <button type="button" className="btn primary small" disabled={!term.trim() || !def.trim()} onClick={save}>
             Save
           </button>

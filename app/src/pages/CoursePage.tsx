@@ -7,6 +7,8 @@ import type { Scope } from '../scope'
 import { breakdown, getSettings } from '../stats'
 import ExamPanel from '../ExamPanel'
 import { weakest } from '../exam'
+import { loadPairs, partnerMap } from '../confusions'
+import { chapterSlots } from '../chapters'
 
 export default function CoursePage() {
   const { id = '' } = useParams()
@@ -29,14 +31,17 @@ export default function CoursePage() {
     if (check) filters.push({ f: 'check', label: `⚠ Needs check ${check}` })
     const weak = weakest(cards, await db.reviews.where('at').above(Date.now() - 60 * 86_400_000).toArray(), 40).length
     if (weak) filters.push({ f: 'weak', label: `⚡ Weakest ${weak}` })
+    const partners = partnerMap(await loadPairs())
+    const mixed = cards.filter((c) => partners.has(c.id)).length
+    if (mixed) filters.push({ f: 'mixed', label: `⇄ Mixed up ${mixed}` })
     const quizzes = await db.quizzes.where('scope').equals(`course:${id}`).sortBy('at')
-    return { sets, b: breakdown(cards), filters, quizzes, cards: cards, list, settings: await getSettings() }
+    return { sets, b: breakdown(cards), filters, quizzes, cards: cards, list, settings: await getSettings(), slots: chapterSlots(list) }
   }, [id])
   const [name, setName] = useState('')
 
   if (course === undefined || data === undefined) return null
   if (!course || course.deleted) return <p>Course not found. <Link to="/">Back home</Link></p>
-  const { sets, b, filters, quizzes, cards, list, settings } = data
+  const { sets, b, filters, quizzes, cards, list, settings, slots } = data
 
   const rename = async () => {
     const n = prompt('Rename course', course.name)
@@ -69,7 +74,7 @@ export default function CoursePage() {
       <ul className="list">
         {sets.map((s) => (
           <li key={s.id}>
-            <Link to={`/set/${s.id}`} className="list-item set-item">
+            <Link to={`/set/${s.id}`} className="list-item set-item ch-stripe" style={{ borderLeftColor: `var(--ch-${slots.get(s.id) ?? 1})` }}>
               <span className="set-name">{s.name}</span>
               <span className="muted small">
                 {s.b.total} cards{s.b.due ? ` · ${s.b.due} due` : ''}

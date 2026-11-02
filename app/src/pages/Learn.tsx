@@ -5,7 +5,8 @@ import { db } from '../db'
 import { answer, start, type Item, type LearnState } from '../learnQueue'
 import QuestionView from '../QuestionView'
 import { makeQuestion, type Question } from '../quizgen'
-import { loadScope, readScope } from '../scope'
+import { loadPairs, partnerMap, partnerOf } from '../confusions'
+import { interleave, loadCoursePools, loadScope, readScope } from '../scope'
 import { isDue, recordOutcome, statusOf } from '../srs'
 import type { Card } from '../types'
 
@@ -33,8 +34,12 @@ export default function Learn() {
   const [pause, setPause] = useState(false)
   const [summary, setSummary] = useState<{ when: string; count: number }[] | null>(null)
   const started = useRef(Date.now())
+  const partners = useRef<Map<string, string[]>>(new Map())
+  const poolOf = useRef<((c: Card) => Card[]) | null>(null)
 
   useEffect(() => {
+    loadPairs().then((p) => (partners.current = partnerMap(p)))
+    loadCoursePools().then((f) => (poolOf.current = f))
     loadScope(scope).then(({ cards, label }) => {
       setAll(cards)
       setLabel(label)
@@ -46,7 +51,7 @@ export default function Learn() {
   const plan = useMemo(() => {
     if (!all) return null
     const due = all.filter((c) => statusOf(c) !== 'new' && isDue(c)).sort((a, b) => a.srs!.due - b.srs!.due)
-    const fresh = all.filter((c) => statusOf(c) === 'new')
+    const fresh = interleave(all.filter((c) => statusOf(c) === 'new')) // mix chapters
     const rest = all.filter((c) => statusOf(c) !== 'new' && !isDue(c))
     return { due, fresh, rest, items: [...due, ...fresh, ...(includeAll ? rest : [])] }
   }, [all, includeAll])
@@ -55,7 +60,8 @@ export default function Learn() {
     const cur = s.queue[0]
     if (!cur) return setQ(null)
     const typed = cur.stage === 1 && !mcOnly
-    setQ(makeQuestion(cur.card, all!, typed ? 'written' : 'mc', typed ? 'term' : 'definition'))
+    const pool = poolOf.current?.(cur.card) ?? all!
+    setQ(makeQuestion(cur.card, pool, typed ? 'written' : 'mc', typed ? 'term' : 'definition', { partner: partnerOf(cur.card, partners.current, pool) }))
     started.current = Date.now()
   }
 

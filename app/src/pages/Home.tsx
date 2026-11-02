@@ -5,6 +5,8 @@ import { ProgressBar } from '../components'
 import { addCourse, db } from '../db'
 import { breakdown, estMinutes, getSettings, loadDayStats } from '../stats'
 import { daysUntil } from '../exam'
+import { bedtimeCards, isBedtime } from '../bedtime'
+import { startOfDay } from '../srs'
 import { scopeQuery } from '../scope'
 import type { Card } from '../types'
 
@@ -27,13 +29,15 @@ export default function Home() {
     const unseen = active.reduce((n, c) => n + c.b.new, 0)
     const freshToday = Math.min(unseen, Math.max(0, settings.newPerDay - day.newToday))
     const exams = rows.filter((c) => c.examDate && daysUntil(c.examDate) >= 0).sort((a, b) => a.examDate! - b.examDate!)
-    return { rows, due, freshToday, settings, day, exams }
+    const activeCards = active.flatMap((c) => byCourse.get(c.id) ?? [])
+    const tonight = isBedtime() ? bedtimeCards(activeCards, await db.reviews.where('at').above(startOfDay(Date.now())).toArray()).length : 0
+    return { rows, due, freshToday, settings, day, exams, tonight }
   })
   const [name, setName] = useState('')
   const [showArchived, setShowArchived] = useState(false)
 
   if (!data) return null
-  const { rows, due, freshToday, settings, day, exams } = data
+  const { rows, due, freshToday, settings, day, exams, tonight } = data
   const visible = rows.filter((c) => showArchived || !c.archived)
   const archivedCount = rows.filter((c) => c.archived).length
   const goalPct = Math.min(100, (day.studiedToday / settings.dailyGoal) * 100)
@@ -82,6 +86,11 @@ export default function Home() {
             {due + freshToday > 0 && (
               <Link to="/study/review?scope=all" className="btn primary">
                 Start review
+              </Link>
+            )}
+            {tonight > 0 && (
+              <Link to="/study/review?scope=all&filter=tonight" className="btn bedtime">
+                🌙 Before bed · {tonight} cards
               </Link>
             )}
           </div>

@@ -108,7 +108,7 @@ export async function addCards(setId: ID, drafts: (CardDraft & Partial<Pick<Card
 
 export const updateCard = (
   id: ID,
-  patch: Partial<Pick<Card, 'term' | 'definition' | 'notes' | 'tags' | 'starred' | 'needsCheck' | 'termImage' | 'defImage' | 'explanations' | 'occlusion' | 'scenarios' | 'drill'>>,
+  patch: Partial<Pick<Card, 'term' | 'definition' | 'notes' | 'tags' | 'starred' | 'needsCheck' | 'termImage' | 'defImage' | 'explanations' | 'occlusion' | 'scenarios' | 'drill' | 'hook' | 'keyword'>>,
 ) => db.cards.update(id, touch(patch))
 
 export const deleteCard = (id: ID) => db.cards.update(id, touch({ deleted: 1 as const }))

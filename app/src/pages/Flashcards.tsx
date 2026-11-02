@@ -1,4 +1,6 @@
 import CardTools from '../CardTools'
+import HookPanel from '../HookPanel'
+import { ChapterChip } from '../chapters'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Kbd, SessionBar } from '../components'
@@ -137,8 +139,12 @@ export default function Flashcards() {
           {card.starred ? '★' : '☆'}
         </button>
       </div>
+      <div className="center">
+        <ChapterChip setId={card.setId} />
+      </div>
       <p className="muted small center">Tap to flip · swipe right = know it, left = still learning</p>
       <CardTools key={card.id} card={card} />
+      {flipped && <HookPanel key={`h-${card.id}`} card={card} />}
       <div className="sort">
         <button className="btn sort-btn learning" onClick={() => sort(false)}>
           ✕ Still learning <Kbd>←</Kbd>

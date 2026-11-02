@@ -5,6 +5,7 @@ import { ColumnChart, ScoreChart, type Col } from '../components'
 import { db } from '../db'
 import { startOfDay, statusOf } from '../srs'
 import type { BlockSummary } from '../focus'
+import { activePairs, loadPairs } from '../confusions'
 
 const DAY = 86_400_000
 const short = (t: number) => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -22,7 +23,8 @@ export default function Stats() {
       db.quizzes.orderBy('at').toArray(),
     ])
     const blocks = ((await db.meta.get('focus-history'))?.value as BlockSummary[] | undefined) ?? []
-    return { courses, sets, cards, reviews, quizzes, blocks }
+    const pairs = activePairs(await loadPairs())
+    return { courses, sets, cards, reviews, quizzes, blocks, pairs }
   })
   if (!data) return null
 
@@ -150,6 +152,35 @@ export default function Stats() {
           <p className="muted small">No answers in the last 14 days yet.</p>
         )}
         {chapters.length > tried.length && <p className="muted small">{chapters.length - tried.length} chapters not studied in the last 14 days.</p>}
+      </section>
+
+      <section className="chart">
+        <strong>Most mixed-up pairs</strong> <span className="muted small">cards whose answers you swap</span>
+        {(() => {
+          const byId = new Map(data.cards.map((c) => [c.id, c]))
+          const shown = data.pairs.filter((p) => byId.has(p.a) && byId.has(p.b) && (courseId === 'all' || (inCourse(byId.get(p.a)!.setId) && inCourse(byId.get(p.b)!.setId))))
+          return shown.length ? (
+            <>
+              <table className="tbl small">
+                <tbody>
+                  {shown.slice(0, 6).map((p) => (
+                    <tr key={p.a + p.b}>
+                      <td>
+                        {byId.get(p.a)!.term} ⇄ {byId.get(p.b)!.term}
+                      </td>
+                      <td className="muted">{p.count}×</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <Link className="btn small" to="/mixed">
+                See all {shown.length} and drill them
+              </Link>
+            </>
+          ) : (
+            <p className="muted small">No mix-ups yet. When you pick another card's answer, the pair shows up here.</p>
+          )
+        })()}
       </section>
 
       <section className="chart">

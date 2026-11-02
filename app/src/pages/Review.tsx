@@ -1,11 +1,13 @@
 import CardTools from '../CardTools'
+import HookPanel from '../HookPanel'
+import { ChapterChip, useChapter } from '../chapters'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Kbd, SessionBar } from '../components'
 import WhyPanel from '../WhyPanel'
 import { CardImage, RichText } from '../rich'
 import Diagram from '../Diagram'
-import { loadScope, readScope } from '../scope'
+import { interleave, loadCoursePools, loadScope, readScope } from '../scope'
 import { isDue, preview, Rating, rate } from '../srs'
 import { getSettings, loadDayStats, saveSettings } from '../stats'
 import { makeQuestion, type Question } from '../quizgen'
@@ -15,6 +17,7 @@ import type { Card } from '../types'
 import type { Grade } from 'ts-fsrs'
 import { daysUntil, examBoost } from '../exam'
 import { db } from '../db'
+import { loadPairs, partnerMap, partnerOf } from '../confusions'
 
 const BUTTONS: { r: Grade; label: string; cls: string }[] = [
   { r: Rating.Again, label: 'Again', cls: 'again' },
@@ -26,7 +29,7 @@ const BUTTONS: { r: Grade; label: string; cls: string }[] = [
 export function Side({ card, side, revealed }: { card: Card; side: 'term' | 'definition'; revealed?: boolean }) {
   return (
     <div className="face-content">
-      <RichText text={side === 'term' ? card.term : card.definition} />
+      <RichText text={side === 'term' ? card.term : card.definition} mark={side === 'definition' ? card.keyword : undefined} />
       {card.occlusion ? (
         <Diagram card={card} revealed={revealed ?? side === 'definition'} />
       ) : (
@@ -48,10 +51,11 @@ export default function Review() {
   const [total, setTotal] = useState(0)
   const started = useRef(Date.now())
   const [style, setStyle] = useState<'flip' | 'mc'>('mc')
-  const [pool, setPool] = useState<Card[]>([])
+  const [poolOf, setPoolOf] = useState<((c: Card) => Card[]) | null>(null)
   const [pace, setPace] = useState(0)
   const [seq, setSeq] = useState(0) // bumps per answer so a re-asked card gets a fresh question
   const [note, setNote] = useState<string | null>(null)
+  const [partners, setPartners] = useState<Map<string, string[]>>(new Map())
 
   useEffect(() => {
     ;(async () => {
@@ -65,7 +69,7 @@ export default function Review() {
       if (settings.examBoost) for (const [courseId, exam] of exams) boosted.push(...examBoost(cards.filter((c) => setCourse.get(c.setId) === courseId && !c.occlusion), exam))
       due.push(...boosted.slice(0, 150))
       setBoost({ on: settings.examBoost && exams.size > 0, ids: new Set(boosted.slice(0, 150).map((c) => c.id)) })
-      const fresh = cards.filter((c) => !c.srs || c.srs.state === 0).slice(0, Math.max(0, settings.newPerDay - day.newToday))
+      const fresh = interleave(cards.filter((c) => !c.srs || c.srs.state === 0)).slice(0, Math.max(0, settings.newPerDay - day.newToday))
       // Mix new cards in among reviews rather than all at the end.
       const q: Card[] = []
       const step = fresh.length ? Math.max(1, Math.floor(due.length / fresh.length)) : 0
@@ -75,12 +79,16 @@ export default function Review() {
         if (step && (i + 1) % step === 0 && n < fresh.length) q.push(fresh[n++])
       })
       q.push(...fresh.slice(n))
-      // Multiple choice: wrong options come from the whole course, so small sets still get good ones.
-      const courseIds = new Set([...sets.values()].map((s) => s.courseId))
-      const courseSets = new Set((await db.sets.toArray()).filter((s) => !s.deleted && courseIds.has(s.courseId)).map((s) => s.id))
-      setPool((await db.cards.toArray()).filter((c) => !c.deleted && courseSets.has(c.setId)))
+      // Multiple choice: wrong options come from the card's whole course (see loadCoursePools).
+      const pools = await loadCoursePools()
+      setPoolOf(() => pools)
       setPace(paceFrom(await db.reviews.where('at').above(Date.now() - 30 * 86_400_000).toArray()))
       setStyle(settings.reviewStyle)
+      setPartners(partnerMap(await loadPairs()))
+      if (scope.filter === 'tonight') {
+        q.splice(0, q.length, ...cards) // before bed: just these, nothing new or boosted
+        setBoost({ on: false, ids: new Set() })
+      }
       setQueue(q)
       setTotal(q.length)
       setLabel(label)
@@ -90,10 +98,15 @@ export default function Review() {
   }, [params.toString()])
 
   const card = queue?.[0]
+  const ch = useChapter(card?.setId ?? '')
   const q: Question | null = useMemo(
-    () => (card && style === 'mc' && pool.length ? makeQuestion(card, pool, 'mc', 'both', { hard: isStrong(card) }) : null),
+    () => {
+      if (!card || style !== 'mc' || !poolOf) return null
+      const pool = poolOf(card)
+      return makeQuestion(card, pool, 'mc', 'both', { hard: isStrong(card), partner: partnerOf(card, partners, pool) })
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [card?.id, seq, style, pool],
+    [card?.id, seq, style, poolOf],
   )
   const answer = async (r: Grade) => {
     if (!card || !shown) return
@@ -191,9 +204,12 @@ export default function Review() {
         </>
       ) : (
         <>
-      <div className={`face ${shown ? 'revealed' : ''}`} onClick={() => setShown(true)}>
+      <div className={`face ch-stripe ${shown ? 'revealed' : ''}`} style={ch ? { borderLeftColor: `var(--ch-${ch.slot})` } : undefined} onClick={() => setShown(true)}>
         {card.srs ? null : <span className="badge">New</span>}
         {boost.ids.has(card.id) && <span className="badge boost">⚡ Exam boost</span>}
+        <div className="face-chapter">
+          <ChapterChip setId={card.setId} />
+        </div>
         <Side card={card} side="term" revealed={shown} />
         {shown && (
           <>
@@ -203,6 +219,7 @@ export default function Review() {
         )}
       </div>
       <CardTools key={card.id} card={card} />
+      {shown && <HookPanel key={`h-${card.id}`} card={card} />}
       {shown && (
         <div onClick={(e) => e.stopPropagation()}>
           <WhyPanel key={card.id} card={card} answerSide="definition" compact />

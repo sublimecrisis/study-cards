@@ -28,7 +28,8 @@ export function splitMath(s: string): Segment[] {
 }
 
 /** Card text with $LaTeX$ formulas rendered. */
-export function RichText({ text, className }: { text: string; className?: string }) {
+export function RichText({ text, className, mark }: { text: string; className?: string; mark?: string }) {
+  let marked = !mark // highlight only the first occurrence of `mark`, outside formulas
   return (
     <span className={`rich ${className ?? ''}`}>
       {splitMath(text).map((seg, i) =>
@@ -40,6 +41,15 @@ export function RichText({ text, className }: { text: string; className?: string
               __html: katex.renderToString(seg.text, { throwOnError: false, displayMode: seg.display }),
             }}
           />
+        ) : !marked && seg.text.includes(mark!) ? (
+          ((marked = true),
+          (
+            <span key={i}>
+              {seg.text.slice(0, seg.text.indexOf(mark!))}
+              <mark className="key-word">{mark}</mark>
+              {seg.text.slice(seg.text.indexOf(mark!) + mark!.length)}
+            </span>
+          ))
         ) : (
           <span key={i}>{seg.text}</span>
         ),

@@ -71,7 +71,7 @@ export function distractorCards(card: Card, pool: Card[], s: 'term' | 'definitio
  * similar length) plus "None of these", which is the right answer about 1 time in 4,
  * so you can't get it by recognizing or eliminating.
  */
-export function makeQuestion(card: Card, pool: Card[], type: QType, answerWith: AnswerWith, opts: { hard?: boolean } = {}): Question {
+export function makeQuestion(card: Card, pool: Card[], type: QType, answerWith: AnswerWith, opts: { hard?: boolean; partner?: Card } = {}): Question {
   // Drill cards are always asked their own way.
   if (card.drill?.kind === 'order') {
     const items = card.drill.items
@@ -96,11 +96,17 @@ export function makeQuestion(card: Card, pool: Card[], type: QType, answerWith: 
     const order = shuffle([0, 1, 2, 3])
     return { ...q, scenario: sc, options: order.map((k) => sc.options[k]), correctIndex: order.indexOf(sc.correct) }
   }
+  // A card you've mixed up with another always gets that partner as one of the options.
+  const withPartner = (wrong: Card[], n: number) => {
+    const p = opts.partner
+    if (!p || p.id === card.id || side(p, answerSide).trim() === side(card, answerSide).trim()) return wrong.slice(0, n)
+    return [p, ...wrong.filter((c) => c.id !== p.id && side(c, answerSide).trim() !== side(p, answerSide).trim())].slice(0, n)
+  }
   if (type === 'mc' && opts.hard) {
-    const wrong = distractorCards(card, pool, answerSide, 4, 0.3)
+    const wrong = withPartner(distractorCards(card, pool, answerSide, 4, 0.3), 4)
     if (wrong.length >= 3) {
       const none = Math.random() < NONE_CHANCE
-      const cards = shuffle(none ? wrong.slice(0, 4) : [card, ...wrong.slice(0, 3)])
+      const cards = shuffle(none ? wrong.slice(0, 4) : [card, ...wrong.slice(0, 3)]) // partner (if any) is first in `wrong`, so it's always kept
       q.hard = true
       q.optionCards = [...cards, undefined]
       q.options = [...cards.map((c) => side(c, answerSide).trim()), NONE_OF_THESE]
@@ -109,7 +115,7 @@ export function makeQuestion(card: Card, pool: Card[], type: QType, answerWith: 
     }
   }
   if (type === 'mc') {
-    const wrong = distractorCards(card, pool, answerSide)
+    const wrong = withPartner(distractorCards(card, pool, answerSide), 3)
     if (wrong.length === 0) return { ...q, type: 'written' } // tiny set: nothing to choose from
     const cards = shuffle([card, ...wrong])
     q.optionCards = cards
