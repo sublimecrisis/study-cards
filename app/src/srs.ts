@@ -1,6 +1,6 @@
 import { createEmptyCard, fsrs, FSRS6_DEFAULT_DECAY, Rating, type Card as FsrsCard, type Grade } from 'ts-fsrs'
 import { db, newId } from './db'
-import type { Card, Srs, StudyMode } from './types'
+import type { Card, ReviewLog, Srs, StudyMode } from './types'
 
 const scheduler = fsrs()
 const DAY = 86_400_000
@@ -88,7 +88,7 @@ export function nextSrs(srs: Srs | null | undefined, rating: Grade, now = new Da
   return fromFsrs(scheduler.next(toFsrs(srs, now), now, rating).card)
 }
 
-async function log(card: Card, mode: StudyMode, rating: 0 | Grade, correct: boolean, ms: number) {
+async function log(card: Card, mode: StudyMode, rating: 0 | Grade, correct: boolean, ms: number, extra: Pick<ReviewLog, 'qtype' | 'chars'> = {}) {
   await db.reviews.add({
     id: newId(),
     cardId: card.id,
@@ -99,15 +99,17 @@ async function log(card: Card, mode: StudyMode, rating: 0 | Grade, correct: bool
     wasNew: statusOf(card) === 'new' ? 1 : 0,
     at: Date.now(),
     ms: Math.min(ms, 120_000), // cap idle time
+    ...extra,
     dirty: 1,
   })
 }
 
-/** Explicit rating (Review mode). */
-export async function rate(card: Card, rating: Grade, ms: number) {
+/** Review mode: a rating you chose (flip) or the app chose (multiple choice, see grade.ts). */
+export async function rate(card: Card, rating: Grade, ms: number, extra: Pick<ReviewLog, 'qtype' | 'chars'> & { correct?: boolean } = {}) {
   const srs = nextSrs(card.srs, rating)
   await db.cards.update(card.id, { srs, updatedAt: Date.now(), dirty: 1 })
-  await log(card, 'review', rating, rating !== Rating.Again, ms)
+  const { correct = rating !== Rating.Again, ...fields } = extra
+  await log(card, 'review', rating, correct, ms, fields)
   return srs
 }
 

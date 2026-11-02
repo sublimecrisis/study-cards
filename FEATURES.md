@@ -150,6 +150,11 @@ Goal: 4-hour study blocks without burning out. Paul's choices:
   now" are plain functions with unit tests (pause, skip, last round trimmed, block end).
   Fatigue + summary read the existing review log for the block's time window.
 
+### Review: multiple choice graded by the app — DONE 2026-11-01
+Toggle in Review. The app rates each answer (wrong/guessed/slow/normal, against Paul's own pace), never
+Easy; cards held 7+ days get a harder 5-option question with "None of these". Plan:
+~/.claude/plans/squishy-dreaming-thacker.md.
+
 ### Batch 2: before the retake (Nov 10 → Dec 20)
 5. **Score report → plan**: enter NASM domain results; the app re-weights Review and
    practice exams toward weak domains.

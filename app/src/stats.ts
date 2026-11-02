@@ -7,8 +7,9 @@ export interface Settings {
   dailyGoal: number // cards studied per day
   newPerDay: number // new cards Review mode introduces per day
   examBoost: boolean // Review pulls forward cards that would fade before an exam
+  reviewStyle: 'flip' | 'mc' // Review: flip + rate yourself, or multiple choice graded by the app
 }
-export const DEFAULT_SETTINGS: Settings = { dailyGoal: 20, newPerDay: 20, examBoost: true }
+export const DEFAULT_SETTINGS: Settings = { dailyGoal: 20, newPerDay: 20, examBoost: true, reviewStyle: 'mc' }
 
 export async function getSettings(): Promise<Settings> {
   const m = await db.meta.get('settings')

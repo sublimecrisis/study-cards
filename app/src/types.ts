@@ -98,6 +98,8 @@ export interface ReviewLog {
   wasNew: 0 | 1
   at: number
   ms: number // time spent on this card
+  qtype?: 'mc' | 'order' | 'match' // multiple-choice Review: how it was asked
+  chars?: number // MC: characters in the question + options (for the pace model)
   dirty: 0 | 1
 }
 

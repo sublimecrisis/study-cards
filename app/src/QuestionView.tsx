@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import CardTools from './CardTools'
 import { GuessedButton, Kbd } from './components'
-import { gradeWritten, type Question } from './quizgen'
+import { gradeWritten, NONE_OF_THESE, type Question } from './quizgen'
 import { CardImage, RichText } from './rich'
 import WhyPanel from './WhyPanel'
 import Diagram from './Diagram'
@@ -10,20 +10,22 @@ import DrillQuestion from './DrillQuestion'
 const SIDE_LABEL = { term: 'Term', definition: 'Definition' }
 
 /**
- * One question with instant feedback. Calls onAnswer(correct, guessed) once the student
+ * One question with instant feedback. Calls onAnswer(correct, guessed, ms) once the student
  * moves on (so "I was right" can still flip a written answer before it counts).
  */
-export default function QuestionView({ q, onAnswer }: { q: Question; onAnswer: (correct: boolean, guessed?: boolean) => void }) {
+export default function QuestionView({ q, onAnswer }: { q: Question; onAnswer: (correct: boolean, guessed?: boolean, ms?: number) => void }) {
   if (q.type === 'order' || q.type === 'match') return <DrillQuestion q={q} onAnswer={onAnswer} />
   return <StandardQuestion q={q} onAnswer={onAnswer} />
 }
 
-function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: boolean, guessed?: boolean) => void }) {
+function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: boolean, guessed?: boolean, ms?: number) => void }) {
   const [picked, setPicked] = useState<number | null>(null) // mc index, or tf 1=true 0=false
   const [typed, setTyped] = useState('')
   const [result, setResult] = useState<boolean | null>(null)
   const input = useRef<HTMLInputElement>(null)
   const next = useRef<HTMLButtonElement>(null)
+  const shownAt = useRef(Date.now())
+  const answerMs = useRef(0) // question shown → answer picked (not → Continue)
 
   const answerText = q.scenario ? q.options![q.correctIndex!] : q.answerSide === 'term' ? q.card.term : q.card.definition
   const promptText = q.scenario ? q.scenario.question : q.promptSide === 'term' ? q.card.term : q.card.definition
@@ -39,10 +41,12 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
   const choose = (i: number) => {
     if (result !== null) return
     setPicked(i)
+    answerMs.current = Date.now() - shownAt.current
     setResult(q.type === 'mc' || q.type === 'scenario' ? i === q.correctIndex : (i === 1) === q.tfTrue)
   }
   const submitWritten = (dontKnow = false) => {
     if (result !== null) return
+    answerMs.current = Date.now() - shownAt.current
     setResult(dontKnow ? false : gradeWritten(typed, answerText))
   }
 
@@ -69,7 +73,10 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
 
       {(q.type === 'mc' || q.type === 'scenario') && (
         <>
-          <div className="q-ask muted small">{q.scenario ? 'Choose the best answer' : `Choose the matching ${SIDE_LABEL[q.answerSide].toLowerCase()}`}</div>
+          <div className="q-ask muted small">
+            {q.scenario ? 'Choose the best answer' : `Choose the matching ${SIDE_LABEL[q.answerSide].toLowerCase()}`}
+            {q.hard && <span className="hard-tag"> · harder question: the answer might not be listed</span>}
+          </div>
           <div className="options">
             {q.options!.map((o, i) => {
               const state = result === null ? '' : i === q.correctIndex ? 'right' : i === picked ? 'wrong' : 'dim'
@@ -81,6 +88,11 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
               )
             })}
           </div>
+          {result !== null && q.hard && q.options![q.correctIndex!] === NONE_OF_THESE && (
+            <div className="q-correct">
+              The real answer wasn't listed: <RichText text={answerText} />
+            </div>
+          )}
         </>
       )}
 
@@ -179,8 +191,8 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
       {result !== null && (
         <div className={`feedback ${result ? 'right' : 'wrong'}`}>
           <span>{result ? '✓ Correct' : '✕ Not quite'}</span>
-          {result && <GuessedButton onClick={() => onAnswer(true, true)} />}
-          <button ref={next} className="btn primary" onClick={() => onAnswer(result)}>
+          {result && <GuessedButton onClick={() => onAnswer(true, true, answerMs.current)} />}
+          <button ref={next} className="btn primary" onClick={() => onAnswer(result, false, answerMs.current)}>
             Continue <Kbd>Enter</Kbd>
           </button>
         </div>

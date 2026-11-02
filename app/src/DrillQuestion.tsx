@@ -9,11 +9,17 @@ import { RichText } from './rich'
  * Matching: pick the matching term for each description.
  * All-or-nothing scoring, with every position/pair marked afterwards.
  */
-export default function DrillQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: boolean, guessed?: boolean) => void }) {
+export default function DrillQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: boolean, guessed?: boolean, ms?: number) => void }) {
   const drill = q.card.drill!
   const [placed, setPlaced] = useState<string[]>([])
   const [picks, setPicks] = useState<Record<number, string>>({})
   const [checked, setChecked] = useState<boolean | null>(null)
+  const [shownAt] = useState(() => Date.now())
+  const [ms, setMs] = useState(0)
+  const check = (ok: boolean) => {
+    setMs(Date.now() - shownAt)
+    setChecked(ok)
+  }
 
   if (drill.kind === 'order') {
     const left = q.shuffled!.filter((x) => !placed.includes(x))
@@ -43,7 +49,7 @@ export default function DrillQuestion({ q, onAnswer }: { q: Question; onAnswer: 
           ))}
         </div>
         {checked === null ? (
-          <button className="btn primary" disabled={left.length > 0} onClick={() => setChecked(right)}>
+          <button className="btn primary" disabled={left.length > 0} onClick={() => check(right)}>
             Check
           </button>
         ) : (
@@ -55,8 +61,8 @@ export default function DrillQuestion({ q, onAnswer }: { q: Question; onAnswer: 
             )}
             <div className={`feedback ${checked ? 'right' : 'wrong'}`}>
               <span>{checked ? '✓ All in order' : `✕ ${placed.filter((x, i) => x === drill.items[i]).length} of ${drill.items.length} in the right spot`}</span>
-              {checked && <GuessedButton onClick={() => onAnswer(true, true)} />}
-              <button className="btn primary" autoFocus onClick={() => onAnswer(checked)}>
+              {checked && <GuessedButton onClick={() => onAnswer(true, true, ms)} />}
+              <button className="btn primary" autoFocus onClick={() => onAnswer(checked, false, ms)}>
                 Continue <Kbd>Enter</Kbd>
               </button>
             </div>
@@ -95,14 +101,14 @@ export default function DrillQuestion({ q, onAnswer }: { q: Question; onAnswer: 
         ))}
       </div>
       {checked === null ? (
-        <button className="btn primary" disabled={!all} onClick={() => setChecked(nRight === pairs.length)}>
+        <button className="btn primary" disabled={!all} onClick={() => check(nRight === pairs.length)}>
           Check
         </button>
       ) : (
         <div className={`feedback ${checked ? 'right' : 'wrong'}`}>
           <span>{checked ? '✓ All matched' : `✕ ${nRight} of ${pairs.length} right`}</span>
-          {checked && <GuessedButton onClick={() => onAnswer(true, true)} />}
-          <button className="btn primary" autoFocus onClick={() => onAnswer(checked)}>
+          {checked && <GuessedButton onClick={() => onAnswer(true, true, ms)} />}
+          <button className="btn primary" autoFocus onClick={() => onAnswer(checked, false, ms)}>
             Continue <Kbd>Enter</Kbd>
           </button>
         </div>

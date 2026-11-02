@@ -17,14 +17,18 @@ export interface Question {
   promptSide: 'term' | 'definition'
   answerSide: 'term' | 'definition'
   options?: string[] // mc
-  optionCards?: Card[] // mc: the card each option came from (explains a wrong pick)
+  optionCards?: (Card | undefined)[] // mc: the card each option came from (explains a wrong pick); undefined = "None of these"
   correctIndex?: number // mc
   shown?: string // tf: the answer side shown (may be a wrong one)
   shownCard?: Card // tf: the card `shown` came from
   tfTrue?: boolean
   scenario?: Scenario // scenario: the AI-written question (options/correctIndex hold its shuffled choices)
   shuffled?: string[] // order: items in the order shown; match: right-hand choices in the order shown
+  hard?: boolean // mc: closest distractors + a "None of these" option
 }
+
+export const NONE_OF_THESE = 'None of these'
+const NONE_CHANCE = 0.25 // hard mode: how often the real answer is left out
 
 const side = (c: Card, s: 'term' | 'definition') => (s === 'term' ? c.term : c.definition)
 const words = (s: string) => new Set(s.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [])
@@ -37,7 +41,7 @@ export function distractors(card: Card, pool: Card[], s: 'term' | 'definition', 
   return distractorCards(card, pool, s, n).map((c) => side(c, s).trim())
 }
 
-export function distractorCards(card: Card, pool: Card[], s: 'term' | 'definition', n = 3): Card[] {
+export function distractorCards(card: Card, pool: Card[], s: 'term' | 'definition', n = 3, noise = 1.5): Card[] {
   const right = side(card, s).trim()
   const rw = words(right)
   const seen = new Set([right.toLowerCase()])
@@ -49,7 +53,7 @@ export function distractorCards(card: Card, pool: Card[], s: 'term' | 'definitio
       for (const w of words(t)) if (rw.has(w)) shared++
       const tags = c.tags.filter((x) => card.tags.includes(x)).length + (card.occlusion && c.occlusion?.group === card.occlusion.group ? 6 : 0)
       const len = Math.abs(t.length - right.length) / Math.max(t.length, right.length, 1)
-      return { c, t, score: shared * 2 + tags + (1 - len) * 2 + Math.random() * 1.5 }
+      return { c, t, score: shared * 2 + tags + (1 - len) * 2 + Math.random() * noise }
     })
     .sort((a, b) => b.score - a.score)
   const out: Card[] = []
@@ -62,7 +66,12 @@ export function distractorCards(card: Card, pool: Card[], s: 'term' | 'definitio
   return out
 }
 
-export function makeQuestion(card: Card, pool: Card[], type: QType, answerWith: AnswerWith): Question {
+/**
+ * `hard` (multiple choice only): the closest wrong answers (same chapter, shared words,
+ * similar length) plus "None of these", which is the right answer about 1 time in 4,
+ * so you can't get it by recognizing or eliminating.
+ */
+export function makeQuestion(card: Card, pool: Card[], type: QType, answerWith: AnswerWith, opts: { hard?: boolean } = {}): Question {
   // Drill cards are always asked their own way.
   if (card.drill?.kind === 'order') {
     const items = card.drill.items
@@ -83,9 +92,21 @@ export function makeQuestion(card: Card, pool: Card[], type: QType, answerWith: 
   const q: Question = { card, type, promptSide, answerSide }
   if (type === 'scenario') {
     const sc = card.scenarios?.[Math.floor(Math.random() * (card.scenarios?.length ?? 0))]
-    if (!sc) return makeQuestion(card, pool, 'mc', answerWith) // not generated yet: fall back to a normal question
+    if (!sc) return makeQuestion(card, pool, 'mc', answerWith, opts) // not generated yet: fall back to a normal question
     const order = shuffle([0, 1, 2, 3])
     return { ...q, scenario: sc, options: order.map((k) => sc.options[k]), correctIndex: order.indexOf(sc.correct) }
+  }
+  if (type === 'mc' && opts.hard) {
+    const wrong = distractorCards(card, pool, answerSide, 4, 0.3)
+    if (wrong.length >= 3) {
+      const none = Math.random() < NONE_CHANCE
+      const cards = shuffle(none ? wrong.slice(0, 4) : [card, ...wrong.slice(0, 3)])
+      q.hard = true
+      q.optionCards = [...cards, undefined]
+      q.options = [...cards.map((c) => side(c, answerSide).trim()), NONE_OF_THESE]
+      q.correctIndex = none ? cards.length : cards.indexOf(card)
+      return q
+    }
   }
   if (type === 'mc') {
     const wrong = distractorCards(card, pool, answerSide)

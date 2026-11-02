@@ -1,5 +1,5 @@
 import CardTools from '../CardTools'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Kbd, SessionBar } from '../components'
 import WhyPanel from '../WhyPanel'
@@ -7,7 +7,10 @@ import { CardImage, RichText } from '../rich'
 import Diagram from '../Diagram'
 import { loadScope, readScope } from '../scope'
 import { isDue, preview, Rating, rate } from '../srs'
-import { getSettings, loadDayStats } from '../stats'
+import { getSettings, loadDayStats, saveSettings } from '../stats'
+import { makeQuestion, type Question } from '../quizgen'
+import QuestionView from '../QuestionView'
+import { autoGrade, expectedMs, isStrong, paceFrom, REASON_LABEL } from '../grade'
 import type { Card } from '../types'
 import type { Grade } from 'ts-fsrs'
 import { daysUntil, examBoost } from '../exam'
@@ -44,6 +47,11 @@ export default function Review() {
   const [done, setDone] = useState(0)
   const [total, setTotal] = useState(0)
   const started = useRef(Date.now())
+  const [style, setStyle] = useState<'flip' | 'mc'>('mc')
+  const [pool, setPool] = useState<Card[]>([])
+  const [pace, setPace] = useState(0)
+  const [seq, setSeq] = useState(0) // bumps per answer so a re-asked card gets a fresh question
+  const [note, setNote] = useState<string | null>(null)
 
   useEffect(() => {
     ;(async () => {
@@ -67,6 +75,12 @@ export default function Review() {
         if (step && (i + 1) % step === 0 && n < fresh.length) q.push(fresh[n++])
       })
       q.push(...fresh.slice(n))
+      // Multiple choice: wrong options come from the whole course, so small sets still get good ones.
+      const courseIds = new Set([...sets.values()].map((s) => s.courseId))
+      const courseSets = new Set((await db.sets.toArray()).filter((s) => !s.deleted && courseIds.has(s.courseId)).map((s) => s.id))
+      setPool((await db.cards.toArray()).filter((c) => !c.deleted && courseSets.has(c.setId)))
+      setPace(paceFrom(await db.reviews.where('at').above(Date.now() - 30 * 86_400_000).toArray()))
+      setStyle(settings.reviewStyle)
       setQueue(q)
       setTotal(q.length)
       setLabel(label)
@@ -76,10 +90,28 @@ export default function Review() {
   }, [params.toString()])
 
   const card = queue?.[0]
+  const q: Question | null = useMemo(
+    () => (card && style === 'mc' && pool.length ? makeQuestion(card, pool, 'mc', 'both', { hard: isStrong(card) }) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [card?.id, seq, style, pool],
+  )
   const answer = async (r: Grade) => {
     if (!card || !shown) return
-    const srs = await rate(card, r, Date.now() - started.current)
+    advance(card, await rate(card, r, Date.now() - started.current))
+  }
+  /** Multiple choice: the app picks the rating (grade.ts), you only answer. */
+  const answerMc = async (correct: boolean, guessed = false, ms = 0) => {
+    if (!card || !q) return
+    const drill = q.type === 'order' || q.type === 'match'
+    const chars = drill ? undefined : questionChars(q)
+    const g = autoGrade({ correct, guessed, ms, expectedMs: chars ? expectedMs(chars, pace) : undefined })
+    const srs = await rate(card, g.rating, ms, { qtype: drill ? (q.type as 'order' | 'match') : 'mc', chars, correct: correct && !guessed })
+    setNote(`Next review ${when(srs.due)}: ${REASON_LABEL[g.reason]}.`)
+    advance(card, srs)
+  }
+  const advance = (card: Card, srs: NonNullable<Card['srs']>) => {
     setShown(false)
+    setSeq((n) => n + 1)
     started.current = Date.now()
     setQueue((q) => {
       const rest = q!.slice(1)
@@ -92,7 +124,7 @@ export default function Review() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (style === 'mc' || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault()
         if (!shown) setShown(true)
@@ -134,6 +166,31 @@ export default function Review() {
         </span>
       </div>
       <SessionBar done={done} total={total} />
+      <div className="chips review-style">
+        {(['mc', 'flip'] as const).map((k) => (
+          <button
+            key={k}
+            className={`chip ${style === k ? 'on' : ''}`}
+            onClick={() => {
+              setStyle(k)
+              setShown(false)
+              setNote(null)
+              void saveSettings({ reviewStyle: k })
+            }}
+          >
+            {k === 'mc' ? 'Multiple choice' : 'Flip cards'}
+          </button>
+        ))}
+      </div>
+      {style === 'mc' ? (
+        <>
+          {note && <p className="muted small review-note">{note}</p>}
+          {card.srs ? null : <span className="badge inline">New</span>}
+          {boost.ids.has(card.id) && <span className="badge boost inline">⚡ Exam boost</span>}
+          {q && <QuestionView key={`${card.id}-${seq}`} q={q} onAnswer={answerMc} />}
+        </>
+      ) : (
+        <>
       <div className={`face ${shown ? 'revealed' : ''}`} onClick={() => setShown(true)}>
         {card.srs ? null : <span className="badge">New</span>}
         {boost.ids.has(card.id) && <span className="badge boost">⚡ Exam boost</span>}
@@ -166,6 +223,21 @@ export default function Review() {
           ))}
         </div>
       )}
+        </>
+      )}
     </div>
   )
+}
+
+/** Characters you read for a multiple-choice question (prompt + options), for the pace model. */
+function questionChars(q: Question) {
+  const prompt = q.promptSide === 'term' ? q.card.term : q.card.definition
+  return prompt.length + (q.options ?? []).reduce((n, o) => n + o.length, 0)
+}
+
+function when(due: number) {
+  const ms = due - Date.now()
+  if (ms < 3_600_000) return `in ${Math.max(1, Math.round(ms / 60_000))} min`
+  const days = Math.round(ms / 86_400_000)
+  return days < 1 ? `in ${Math.round(ms / 3_600_000)} h` : days === 1 ? 'tomorrow' : `in ${days} days`
 }
