@@ -155,6 +155,40 @@ Toggle in Review. The app rates each answer (wrong/guessed/slow/normal, against 
 Easy; cards held 7+ days get a harder 5-option question with "None of these". Plan:
 ~/.claude/plans/squishy-dreaming-thacker.md.
 
+### Memory boosts, planned 2026-11-01 (Paul's picks), build in this order
+Evidence note: "learning styles" and color theory are weak; the app already covers the big
+ones (retrieval practice, spacing, pretesting, dual coding, instant feedback). These add:
+
+1. **Interleaving** (strong evidence; small change). New cards in Review and Learn are mixed
+   across chapters instead of in chapter order, with no two in a row from the same chapter
+   when avoidable. Due reviews are already mixed by due date. Forces "which concept is
+   this?", which is what the exam tests.
+2. **Confusion pairs** (strong for MC). When a wrong MC option is picked, save the pair
+   (card asked, card whose answer you chose) on a synced list. A pair counts as fixed after
+   3 correct answers in a row on either card. Shown as:
+   - a "Mixed up" drill (Review filter + Learn): the two cards side by side ("X vs Y: how to
+     tell them apart"), then MC questions that use the partner as a forced distractor;
+   - in normal MC, a confused card always gets its partner as one of the options;
+   - Stats: "Most mixed-up pairs" list.
+3. **AI memory hooks + Hooks page.** "🪝 Make a memory hook" on study screens (and on wrong
+   answers) asks the AI for one hook: a mnemonic, acronym or vivid image story, plus the
+   **key word** to highlight. Saved on the card (synced), so it's created once.
+   - New **Hooks** page (top-bar/tab entry): every hook, newest first, searchable, grouped
+     by chapter; edit or delete a hook; regenerate if it's weak. The list grows as you make
+     hooks.
+   - **Hook quiz** on that page: shows a hook, you pick which term it's for (4 options from
+     other hooked cards), and the reverse (term → pick its hook). Answers feed the normal
+     schedule like Quiz does.
+   - The hook shows under the answer whenever that card comes up again.
+   - Needs `explain` mode `hook` (Paul re-pastes the function once).
+4. **Bedtime review.** A "🌙 Before bed" button (Home, after 8 pm) runs a short session:
+   cards you missed or guessed today, then shaky cards (recall below 70%), max ~15 min.
+   Normal grading. Note: sleep consolidates what was studied last.
+5. **Chapter colors + key word.** Each chapter/set gets a fixed color (chosen from a palette
+   tested to stay distinguishable for color-blind readers, light and dark mode) shown as a
+   stripe on cards, questions and set lists. `**word**` in card text renders highlighted;
+   memory hooks fill in the key word automatically, and you can bold one yourself in Edit.
+
 ### Batch 2: before the retake (Nov 10 → Dec 20)
 5. **Score report → plan**: enter NASM domain results; the app re-weights Review and
    practice exams toward weak domains.
