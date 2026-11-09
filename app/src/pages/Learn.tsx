@@ -13,6 +13,7 @@ import { isDue, recordOutcome, statusOf } from '../srs'
 import type { Card } from '../types'
 import { activeNow } from '../studyClock'
 import PauseControl from '../PauseControl'
+import { PastCard, StudyNav } from '../StudyNav'
 
 const CHECKPOINT = 10 // answers between progress check-ins
 
@@ -41,6 +42,8 @@ export default function Learn() {
   const partners = useRef<Map<string, string[]>>(new Map())
   const poolOf = useRef<((c: Card) => Card[]) | null>(null)
   const [twins, setTwins] = useState<Map<string, string>>(new Map())
+  const [history, setHistory] = useState<Card[]>([])
+  const [viewing, setViewing] = useState<number | null>(null)
 
   useEffect(() => {
     loadPairs().then((p) => (partners.current = partnerMap(p)))
@@ -84,6 +87,7 @@ export default function Learn() {
   }
 
   const onAnswer = (rightAnswer: boolean, guessed = false) => {
+    if (q) setHistory((h) => [...h, q.card])
     const correct = rightAnswer && !guessed // a guess counts as a miss: the card comes back
     const ms = activeNow() - started.current
     const { state, learned } = answer(st!, correct)
@@ -221,8 +225,23 @@ export default function Learn() {
       {header}
       {q && (
         <>
-          <span className="muted small">{st.queue[0].stage === 0 ? 'First recall' : 'Spaced recall — one more to learn it'}</span>
-          <QuestionView key={n} q={q} onAnswer={onAnswer} />
+          <StudyNav
+            history={history}
+            viewing={viewing}
+            setViewing={setViewing}
+            canSkip={st.queue.length > 1}
+            onSkip={() => {
+              const s2 = { ...st, queue: [...st.queue.slice(1), st.queue[0]] } // ungraded: just later in the round
+              setSt(s2)
+              ask(s2)
+              started.current = activeNow()
+            }}
+          />
+          {viewing !== null && <PastCard key={history[viewing].id} card={history[viewing]} />}
+          <div style={viewing !== null ? { display: 'none' } : undefined}>
+            <span className="muted small">{st.queue[0].stage === 0 ? 'First recall' : 'Spaced recall — one more to learn it'}</span>
+            <QuestionView key={`${n}-${q.card.id}`} q={q} onAnswer={onAnswer} />
+          </div>
         </>
       )}
     </div>

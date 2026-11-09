@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { buildPlan, clock, pause, PHASE_LABEL, position, presetOf, PRESETS, resume, skip, start, type BlockSummary } from '../focus'
+import { buildPlan, clock, pause, paceStats, PHASE_LABEL, position, presetOf, PRESETS, resume, skip, start, type BlockSummary, type FocusState } from '../focus'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '../db'
 import { primeSound, setFocus, useFocus, useNow } from '../focusStore'
 
 const LENGTHS = [60, 120, 180, 240]
@@ -68,6 +70,7 @@ export default function Focus() {
             )}
           </div>
         </section>
+        <LiveBlockStats block={block} now={now} />
         <Plan preset={block.preset} blockMin={block.blockMin} current={pos.i} />
         <button className="btn link small danger" onClick={() => confirm('End this block now?') && setFocus({ block: null, fatigueSnooze: 0 })}>
           End block
@@ -153,25 +156,59 @@ export function Summary({ s }: { s: BlockSummary }) {
   return (
     <section className="panel focus-summary">
       <h2>Block done 🎉</h2>
-      <p className="small">
-        <b>{hm(s.minutesFocused)}</b> focused · <b>{s.answers}</b> answers · <b>{pct(s.accuracy)}</b> right
-      </p>
+      <PaceTiles minutes={s.minutesFocused} answers={s.answers} perMin={s.perMin} newCards={s.newCards} accuracy={s.accuracy} />
       {s.rounds.length > 0 && (
-        <ul className="exam-sets">
-          {s.rounds.map((r) => (
-            <li key={r.round}>
-              <span>Round {r.round}</span>
-              <span className="mini-bar">
-                <span style={{ width: pct(r.accuracy === null ? 0 : r.accuracy) }} />
-              </span>
-              <span className="small">
-                <b>{pct(r.accuracy)}</b> <span className="muted">· {r.answers}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
+        <table className="tbl small round-table">
+          <thead>
+            <tr>
+              <th>Round</th>
+              <th>Right</th>
+              <th>Cards</th>
+              <th>Per min</th>
+              <th>New</th>
+            </tr>
+          </thead>
+          <tbody>
+            {s.rounds.map((r) => (
+              <tr key={r.round}>
+                <td>{r.round}</td>
+                <td>{pct(r.accuracy)}</td>
+                <td>{r.answers}</td>
+                <td>{r.perMin ?? '—'}</td>
+                <td>{r.newCards ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
-      <p className="muted small">If accuracy falls in the later rounds, try shorter rounds or a longer long break next time.</p>
+      <p className="muted small">If accuracy or cards per minute drop in the later rounds, you're fading: try shorter rounds or a longer long break next time.</p>
+    </section>
+  )
+}
+
+function PaceTiles({ minutes, answers, perMin, newCards, accuracy }: { minutes: number; answers: number; perMin?: number | null; newCards?: number; accuracy: number | null }) {
+  return (
+    <div className="pace-tiles">
+      <div><b>{hm(minutes)}</b><span className="muted small">focused</span></div>
+      <div><b>{answers}</b><span className="muted small">cards answered</span></div>
+      <div><b>{perMin ?? '—'}</b><span className="muted small">cards / min</span></div>
+      <div><b>{newCards ?? '—'}</b><span className="muted small">new learned</span></div>
+      <div><b>{pct(accuracy)}</b><span className="muted small">right</span></div>
+    </div>
+  )
+}
+
+/** Live numbers for the block in progress. */
+function LiveBlockStats({ block, now }: { block: FocusState; now: number }) {
+  const answers = useLiveQuery(() => db.reviews.where('at').aboveOrEqual(block.startedAt).toArray(), [block.startedAt]) ?? []
+  // Focused minutes so far: finished rounds plus the one in progress.
+  const minutes = Math.round(block.rounds.reduce((n, r) => n + (r.to - r.from), 0) / 60_000)
+  const p = paceStats(answers, minutes)
+  void now
+  return (
+    <section className="panel">
+      <div className="small muted">This block so far</div>
+      <PaceTiles minutes={p.minutes} answers={p.answers} perMin={p.perMin} newCards={p.newCards} accuracy={p.accuracy} />
     </section>
   )
 }

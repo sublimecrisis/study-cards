@@ -14,6 +14,7 @@ import { prepareScenarios } from '../scenario'
 import { shuffle } from '../scope'
 import { activeNow } from '../studyClock'
 import PauseControl from '../PauseControl'
+import { PastCard, StudyNav } from '../StudyNav'
 
 const QUICK: QuizConfig = { count: 10, types: ['mc', 'tf', 'mc', 'written'], answerWith: 'both' }
 // Ordering/matching come from drill cards themselves, so they aren't a choice here.
@@ -33,6 +34,7 @@ export default function Quiz() {
   const [timer, setTimer] = useState(true)
   const [qs, setQs] = useState<Question[] | null>(null)
   const [i, setI] = useState(0)
+  const [viewing, setViewing] = useState<number | null>(null)
   const [answers, setAnswers] = useState<boolean[]>([])
   const [result, setResult] = useState<QuizResult | null>(null)
   const [elapsed, setElapsed] = useState(0)
@@ -74,6 +76,7 @@ export default function Quiz() {
     }
     setQs(buildQuiz(pickFrom, cards!, { ...c, count: Math.min(c.count, pickFrom.length) }))
     setI(0)
+    setViewing(null)
     setAnswers([])
     setResult(null)
     setElapsed(0)
@@ -167,7 +170,20 @@ export default function Quiz() {
           </span>
         </div>
         <SessionBar done={i} total={qs.length} />
-        <QuestionView key={i} q={qs[i]} onAnswer={onAnswer} />
+        <StudyNav
+          history={qs.slice(0, i).map((x) => x.card)}
+          viewing={viewing}
+          setViewing={setViewing}
+          canSkip={i < qs.length - 1}
+          onSkip={() => {
+            setQs([...qs.slice(0, i), ...qs.slice(i + 1), qs[i]]) // ungraded: asked again at the end
+            qStart.current = activeNow()
+          }}
+        />
+        {viewing !== null && <PastCard key={qs[viewing].card.id} card={qs[viewing].card} />}
+        <div style={viewing !== null ? { display: 'none' } : undefined}>
+          <QuestionView key={`${i}-${qs[i].card.id}`} q={qs[i]} onAnswer={onAnswer} />
+        </div>
       </div>
     )
   }

@@ -67,10 +67,20 @@ describe('fatigue + summary', () => {
       { at: 45 * MIN, correct: 1 as const, ms: 0 },
     ]
     const sum = summarize(s, answers, 'x')
-    expect(sum.rounds).toEqual([
-      { round: 1, answers: 2, accuracy: 1 },
-      { round: 2, answers: 2, accuracy: 0.5 },
+    expect(sum.rounds).toMatchObject([
+      { round: 1, answers: 2, accuracy: 1, minutes: 25 },
+      { round: 2, answers: 2, accuracy: 0.5, minutes: 24 },
     ])
     expect(sum).toMatchObject({ answers: 4, accuracy: 0.75, minutesFocused: 49 })
+  })
+  it('pace: cards per minute, new cards, different cards', async () => {
+    const { paceStats } = await import('./focus')
+    const xs = [
+      { at: 1, correct: 1 as const, ms: 0, wasNew: 1 as const, cardId: 'a' },
+      { at: 2, correct: 0 as const, ms: 0, wasNew: 0 as const, cardId: 'b' },
+      { at: 3, correct: 1 as const, ms: 0, wasNew: 0 as const, cardId: 'b' },
+    ]
+    expect(paceStats(xs, 2)).toMatchObject({ answers: 3, perMin: 1.5, newCards: 1, cards: 2 })
+    expect(paceStats(xs, 0).perMin).toBeNull() // under a minute: no rate yet
   })
 })

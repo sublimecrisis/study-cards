@@ -34,8 +34,11 @@ export function breakdown(cards: Card[], now = Date.now()): Breakdown {
 /** ~8 s per review card, ~20 s per new card (first sight takes longer). */
 export const estMinutes = (due: number, fresh: number) => Math.max(1, Math.round((due * 8 + fresh * 20) / 60))
 
+/** Time studied on one answer: the full time on the card when known, else the answer time. */
+export const studied = (l: Pick<ReviewLog, 'ms' | 'spent'>) => l.spent ?? l.ms
+
 // ---- streak & daily goal (pure, from review logs) ----
-export function dayStats(logs: Pick<ReviewLog, 'at' | 'cardId' | 'ms' | 'wasNew'>[], now = Date.now()) {
+export function dayStats(logs: Pick<ReviewLog, 'at' | 'cardId' | 'ms' | 'spent' | 'wasNew'>[], now = Date.now()) {
   const today = startOfDay(now)
   const byDay = new Map<number, Set<string>>()
   let msToday = 0
@@ -45,7 +48,7 @@ export function dayStats(logs: Pick<ReviewLog, 'at' | 'cardId' | 'ms' | 'wasNew'
     if (!byDay.has(d)) byDay.set(d, new Set())
     byDay.get(d)!.add(l.cardId)
     if (d === today) {
-      msToday += l.ms
+      msToday += studied(l)
       if (l.wasNew) newToday++
     }
   }

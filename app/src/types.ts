@@ -110,6 +110,7 @@ export interface ReviewLog {
   ms: number // time spent on this card
   qtype?: 'mc' | 'order' | 'match' // multiple-choice Review: how it was asked
   chars?: number // MC: characters in the question + options (for the pace model)
+  spent?: number // full active time on the card incl. reading feedback (time studied); ms = time to answer
   dirty: 0 | 1
 }
 

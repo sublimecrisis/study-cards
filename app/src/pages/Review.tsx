@@ -23,6 +23,7 @@ import { twinIndex } from '../twinStore'
 import { oncePerConcept } from '../twins'
 import { activeNow } from '../studyClock'
 import PauseControl from '../PauseControl'
+import { PastCard, StudyNav } from '../StudyNav'
 
 const BUTTONS: { r: Grade; label: string; cls: string }[] = [
   { r: Rating.Again, label: 'Again', cls: 'again' },
@@ -65,6 +66,8 @@ export default function Review() {
   const onePass = scope.filter === 'tonight'
   const [tally, setTally] = useState({ right: 0, wrong: 0 })
   const [missed, setMissed] = useState<Card[]>([])
+  const [history, setHistory] = useState<Card[]>([]) // answered this session, for Back
+  const [viewing, setViewing] = useState<number | null>(null)
 
   useEffect(() => {
     ;(async () => {
@@ -130,11 +133,13 @@ export default function Review() {
     const drill = q.type === 'order' || q.type === 'match'
     const chars = drill ? undefined : questionChars(q)
     const g = autoGrade({ correct, guessed, ms, expectedMs: chars ? expectedMs(chars, pace) : undefined })
-    const srs = await rate(card, g.rating, ms, { qtype: drill ? (q.type as 'order' | 'match') : 'mc', chars, correct: correct && !guessed })
+    // ms (question -> tap) grades speed; spent (question -> Continue, pauses excluded) is time studied.
+    const srs = await rate(card, g.rating, ms, { qtype: drill ? (q.type as 'order' | 'match') : 'mc', chars, correct: correct && !guessed, spent: activeNow() - started.current })
     setNote(`Next review ${when(srs.due)}: ${REASON_LABEL[g.reason]}.`)
     advance(card, srs, correct && !guessed)
   }
   const advance = (card: Card, srs: NonNullable<Card['srs']>, ok: boolean) => {
+    setHistory((h) => [...h, card])
     setShown(false)
     setSeq((n) => n + 1)
     started.current = activeNow()
@@ -155,9 +160,18 @@ export default function Review() {
     })
   }
 
+  /** Skip: move the current card to the end of the session, ungraded. */
+  const skip = () => {
+    setQueue((q) => (q && q.length > 1 ? [...q.slice(1), q[0]] : q))
+    setSeq((n) => n + 1)
+    setShown(false)
+    setNote(null)
+    started.current = activeNow()
+  }
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (style === 'mc' || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (viewing !== null || style === 'mc' || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault()
         if (!shown) setShown(true)
@@ -209,6 +223,9 @@ export default function Review() {
         </span>
       </div>
       <SessionBar done={done} total={total} />
+      <StudyNav history={history} viewing={viewing} setViewing={setViewing} onSkip={skip} canSkip={queue.length > 1} />
+      {viewing !== null && <PastCard key={history[viewing].id} card={history[viewing]} />}
+      <div style={viewing !== null ? { display: 'none' } : undefined}>
       <div className="chips review-style">
         {(['mc', 'flip'] as const).map((k) => (
           <button
@@ -272,6 +289,7 @@ export default function Review() {
       )}
         </>
       )}
+      </div>
     </div>
   )
 }

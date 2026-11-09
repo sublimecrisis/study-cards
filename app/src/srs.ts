@@ -89,7 +89,7 @@ export function nextSrs(srs: Srs | null | undefined, rating: Grade, now = new Da
   return fromFsrs(scheduler.next(toFsrs(srs, now), now, rating).card)
 }
 
-async function log(card: Card, mode: StudyMode, rating: 0 | Grade, correct: boolean, ms: number, extra: Pick<ReviewLog, 'qtype' | 'chars'> = {}) {
+async function log(card: Card, mode: StudyMode, rating: 0 | Grade, correct: boolean, ms: number, extra: Pick<ReviewLog, 'qtype' | 'chars' | 'spent'> = {}) {
   await db.reviews.add({
     id: newId(),
     cardId: card.id,
@@ -101,12 +101,13 @@ async function log(card: Card, mode: StudyMode, rating: 0 | Grade, correct: bool
     at: Date.now(),
     ms: Math.min(ms, 120_000), // cap idle time
     ...extra,
+    ...(extra.spent !== undefined ? { spent: Math.min(extra.spent, 600_000) } : {}),
     dirty: 1,
   })
 }
 
 /** Review mode: a rating you chose (flip) or the app chose (multiple choice, see grade.ts). */
-export async function rate(card: Card, rating: Grade, ms: number, extra: Pick<ReviewLog, 'qtype' | 'chars'> & { correct?: boolean } = {}) {
+export async function rate(card: Card, rating: Grade, ms: number, extra: Pick<ReviewLog, 'qtype' | 'chars' | 'spent'> & { correct?: boolean } = {}) {
   const srs = nextSrs(card.srs, rating)
   await db.cards.update(card.id, { srs, updatedAt: Date.now(), dirty: 1 })
   await shareSchedule(card.id, srs) // twins (same concept in other chapters) share the schedule

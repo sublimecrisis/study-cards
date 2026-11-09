@@ -25,14 +25,22 @@ export function activeNow(now = Date.now()) {
 
 export function pauseStudy(reason: 'manual' | 'away' = 'manual') {
   if (state.paused) {
-    if (reason === 'manual' && state.paused === 'away') state = { ...state, paused: 'manual' }
+    if (reason === 'manual' && state.paused === 'away') {
+      state = { ...state, paused: 'manual' }
+      const fs = focusSnapshot()
+      if (fs?.block && !fs.block.pausedAt) {
+        setFocus({ block: pauseBlock(fs.block) })
+        pausedFocusBlock = true
+      }
+    }
     emit()
     return
   }
   state = { ...state, paused: reason, since: Date.now() }
-  // A running focus block pauses with you (and resumes with you).
+  // Pressing Pause also pauses a running focus block (and Resume resumes it). Leaving the
+  // app does NOT: you're often away because it's your break, and the break must keep running.
   const fs = focusSnapshot()
-  if (fs?.block && !fs.block.pausedAt) {
+  if (reason === 'manual' && fs?.block && !fs.block.pausedAt) {
     setFocus({ block: pauseBlock(fs.block) })
     pausedFocusBlock = true
   }

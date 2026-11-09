@@ -31,6 +31,7 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
   const shownAt = useRef(activeNow())
   const ch = useChapter(q.card.setId)
   const answerMs = useRef(0) // question shown → answer picked (not → Continue)
+  const root = useRef<HTMLDivElement>(null)
 
   const answerText = q.scenario ? q.options![q.correctIndex!] : q.answerSide === 'term' ? q.card.term : q.card.definition
   const promptText = q.scenario ? q.scenario.question : q.promptSide === 'term' ? q.card.term : q.card.definition
@@ -61,7 +62,7 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (result !== null || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (result !== null || !root.current?.offsetParent || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return // hidden (looking back at a card): ignore keys
       const n = Number(e.key)
       if ((q.type === 'mc' || q.type === 'scenario') && n >= 1 && n <= (q.options?.length ?? 0)) choose(n - 1)
       if (q.type === 'tf' && (e.key === 't' || e.key === '1')) choose(1)
@@ -72,7 +73,7 @@ function StandardQuestion({ q, onAnswer }: { q: Question; onAnswer: (correct: bo
   })
 
   return (
-    <div className="question">
+    <div className="question" ref={root}>
       <div className="q-prompt ch-stripe" style={ch ? { borderLeftColor: `var(--ch-${ch.slot})` } : undefined}>
         <span className="q-label">{q.scenario ? 'Scenario' : SIDE_LABEL[q.promptSide]}</span>
         <ChapterChip setId={q.card.setId} />

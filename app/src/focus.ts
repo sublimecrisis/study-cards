@@ -108,7 +108,7 @@ export function trackRound(s: FocusState, now = Date.now()): FocusState {
 
 // ---- fatigue + summary ----
 
-type Answer = Pick<ReviewLog, 'at' | 'correct' | 'ms'>
+type Answer = Pick<ReviewLog, 'at' | 'correct' | 'ms'> & Partial<Pick<ReviewLog, 'wasNew' | 'cardId'>>
 
 /**
  * Accuracy-drop check: with at least 30 answers in the block, compare the last 15
@@ -130,25 +130,44 @@ export interface BlockSummary {
   minutesFocused: number
   answers: number
   accuracy: number | null
-  rounds: { round: number; answers: number; accuracy: number | null }[]
+  rounds: RoundStats[]
+  // added 2026-11-08 (older summaries don't have them)
+  perMin?: number | null // cards answered per focused minute
+  newCards?: number // first-time cards seen in the block
+  cards?: number // different cards answered
+}
+export interface RoundStats {
+  round: number
+  answers: number
+  accuracy: number | null
+  minutes?: number
+  perMin?: number | null
+  newCards?: number
+}
+
+/** Answers, pace, new cards and accuracy for a stretch of study (pure). */
+export function paceStats(answers: Answer[], minutes: number) {
+  const acc = answers.length ? answers.filter((x) => x.correct).length / answers.length : null
+  return {
+    answers: answers.length,
+    accuracy: acc,
+    minutes,
+    perMin: minutes >= 1 ? Math.round((answers.length / minutes) * 10) / 10 : null,
+    newCards: answers.filter((a) => a.wasNew).length,
+    cards: new Set(answers.map((a) => a.cardId ?? a.at)).size,
+  }
 }
 
 export function summarize(s: FocusState, answers: Answer[], id: string): BlockSummary {
-  const acc = (xs: Answer[]) => (xs.length ? xs.filter((x) => x.correct).length / xs.length : null)
-  const rounds = s.rounds.map((r) => {
+  const rounds: RoundStats[] = s.rounds.map((r) => {
     const xs = answers.filter((a) => a.at >= r.from && a.at <= r.to + 5_000)
-    return { round: r.round, answers: xs.length, accuracy: acc(xs) }
+    const p = paceStats(xs, Math.round((r.to - r.from) / MIN))
+    return { round: r.round, answers: p.answers, accuracy: p.accuracy, minutes: p.minutes, perMin: p.perMin, newCards: p.newCards }
   })
   const inBlock = answers.filter((a) => a.at >= s.startedAt)
-  return {
-    id,
-    at: s.startedAt,
-    preset: s.preset,
-    minutesFocused: Math.round(s.rounds.reduce((n, r) => n + (r.to - r.from), 0) / MIN),
-    answers: inBlock.length,
-    accuracy: acc(inBlock),
-    rounds,
-  }
+  const minutesFocused = Math.round(s.rounds.reduce((n, r) => n + (r.to - r.from), 0) / MIN)
+  const p = paceStats(inBlock, minutesFocused)
+  return { id, at: s.startedAt, preset: s.preset, minutesFocused, answers: p.answers, accuracy: p.accuracy, rounds, perMin: p.perMin, newCards: p.newCards, cards: p.cards }
 }
 
 export const clock = (ms: number) => {

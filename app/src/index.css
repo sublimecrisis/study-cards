@@ -511,3 +511,15 @@ mark.key-word { background: #fde68a; color: #422006; border-radius: 3px; padding
 .pause-card { max-width: 360px; text-align: center; }
 .pause-icon { font-size: 2.6rem; }
 .pause-card h2 { margin: 0.4rem 0; }
+
+/* back / skip */
+.study-nav { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin: 0.5rem 0; }
+.study-nav .btn.small { min-height: 2rem; padding: 0.25rem 0.75rem; font-size: 0.85rem; }
+.study-nav .btn.primary { margin-left: auto; }
+.past-card { border: 2px dashed var(--border); border-radius: var(--radius); padding: 0.8rem; display: grid; gap: 0.6rem; }
+.past-answer { background: var(--surface-2); border-radius: 10px; padding: 0.7rem 0.8rem; display: grid; gap: 0.3rem; }
+.pace-tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.4rem; margin: 0.5rem 0; text-align: center; }
+.pace-tiles div { display: grid; gap: 0.1rem; background: var(--surface-2); border-radius: 10px; padding: 0.45rem 0.2rem; }
+.pace-tiles b { font-size: 1.05rem; }
+.round-table th, .round-table td { text-align: center; }
+@media (max-width: 420px) { .pace-tiles { grid-template-columns: repeat(3, 1fr); } }

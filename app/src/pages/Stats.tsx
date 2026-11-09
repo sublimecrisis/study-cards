@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { ColumnChart, ScoreChart, type Col } from '../components'
 import { db } from '../db'
 import { startOfDay, statusOf } from '../srs'
+import { studied } from '../stats'
 import type { BlockSummary } from '../focus'
 import { activePairs, loadPairs } from '../confusions'
 
@@ -39,7 +40,7 @@ export default function Stats() {
 
   // Headline numbers: last 7 days
   const week = reviews.filter((r) => r.at >= today - 6 * DAY)
-  const weekMin = Math.round(week.reduce((n, r) => n + r.ms, 0) / 60_000)
+  const weekMin = Math.round(week.reduce((n, r) => n + studied(r), 0) / 60_000)
   const weekAcc = week.length ? week.filter((r) => r.correct).length / week.length : 0
   const activeDays = new Set(week.map((r) => startOfDay(r.at))).size
 
@@ -47,7 +48,7 @@ export default function Stats() {
   const minutes: Col[] = Array.from({ length: 14 }, (_, k) => {
     const d = today - (13 - k) * DAY
     const day = reviews.filter((r) => r.at >= d && r.at < d + DAY)
-    const m = Math.round(day.reduce((n, r) => n + r.ms, 0) / 60_000)
+    const m = Math.round(day.reduce((n, r) => n + studied(r), 0) / 60_000)
     return {
       key: String(d),
       tick: k === 13 ? 'Today' : short(d),
@@ -184,7 +185,7 @@ export default function Stats() {
       </section>
 
       <section className="chart">
-        <strong>Focus blocks</strong> <span className="muted small">accuracy per round: watch for a drop late in the block</span>
+        <strong>Focus blocks</strong> <span className="muted small">accuracy and cards/min: watch for a drop late in the block</span>
         {data.blocks.length ? (
           <table className="tbl small">
             <tbody>
@@ -196,6 +197,7 @@ export default function Stats() {
                     <td>{short(b.at)}</td>
                     <td>{b.minutesFocused} min</td>
                     <td>{b.accuracy === null ? '—' : pct(b.accuracy)}</td>
+                    <td>{b.perMin != null ? `${b.perMin}/min` : ''}{b.newCards ? ` · ${b.newCards} new` : ''}</td>
                     <td className="muted">{b.rounds.map((r) => `R${r.round} ${r.accuracy === null ? '—' : pct(r.accuracy)}`).join(' · ')}</td>
                   </tr>
                 ))}
