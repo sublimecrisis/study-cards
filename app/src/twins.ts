@@ -15,10 +15,13 @@ import type { Card } from './types'
  */
 export const SAME_ANSWER = 0.9
 export const SAME_NAME_OVERLAP = 0.5
-const STOP = new Set(['the', 'and', 'for', 'with', 'that', 'from', 'are', 'its', 'your', 'this', 'which', 'what', 'into', 'when', 'than', 'they', 'their', 'about', 'used', 'by', 'of', 'to', 'in', 'or', 'an', 'is', 'on', 'at', 'as', 'be'])
+const STOP = new Set(['the', 'and', 'for', 'with', 'that', 'from', 'are', 'its', 'your', 'this', 'which', 'what', 'into', 'when', 'than', 'they', 'their', 'about', 'used', 'by', 'of', 'to', 'in', 'or', 'an', 'is', 'on', 'at', 'as', 'be',
+  // filler that doesn't change what an answer says
+  'working', 'together', 'made', 'up', 'includes', 'including', 'consists', 'combines', 'also', 'all', 'both', 'called', 'known'])
 
 export const termKey = (term: string) => term.toLowerCase().replace(/\(.*?\)/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim()
-export const words = (s: string) => new Set((s.toLowerCase().match(/[a-z0-9]{2,}/g) ?? []).filter((w) => !STOP.has(w)))
+// Every number counts (2.4 vs 1.6 g/kg); words need 2+ letters.
+export const words = (s: string) => new Set((s.toLowerCase().match(/\d+(?:\.\d+)?|[a-z][a-z0-9]+/g) ?? []).filter((w) => !STOP.has(w)))
 /** Share of the smaller answer's words that also appear in the other. */
 export function containment(a: Set<string>, b: Set<string>) {
   let i = 0
@@ -39,14 +42,23 @@ export function sameConcept(a: Lite, b: Lite) {
 
 /** Effectively the same answer: never show both in one multiple-choice question. */
 export function sameAnswer(a: Lite, b: Lite) {
-  if (skip(a) || skip(b)) return false
+  if (a.drill || b.drill) return false // diagram labels count too: "Aorta" vs "The aorta"
   if (sameConcept(a, b)) return true
   const A = words(a.definition), B = words(b.definition)
-  if (containment(A, B) < SAME_ANSWER) return false
-  // The few words that differ must not carry the meaning: a number (120 vs 129) or several words.
-  const diff = [...A].filter((w) => !B.has(w)).concat([...B].filter((w) => !A.has(w)))
-  return diff.length <= 3 && !diff.some((w) => /\d/.test(w))
+  const shared = [...A].filter((w) => B.has(w)).length
+  const diff = [...A, ...B].filter((w) => !(A.has(w) && B.has(w)))
+  if (diff.some((w) => /\d/.test(w))) return false // 120 vs 129: numbers carry the meaning
+  // Near-identical wording (Adherence x2). One meaning word apart is NOT the same:
+  // agonist "is the prime mover" vs synergist "assists the prime mover" (Jaccard 0.75).
+  if (shared / Math.max(1, A.size + B.size - shared) >= NEAR_IDENTICAL) return !reversedDirection(a.definition, b.definition)
+  // Lists: the shorter list's items all appear in the longer one, which only adds detail
+  // ("Sensory, integrative and motor" vs "Sensory (detect change), integrative (...), motor (...)").
+  const small = Math.min(A.size, B.size)
+  return isList(a.definition) && isList(b.definition) && small >= 3 && containment(A, B) >= SAME_ANSWER
 }
+
+const isList = (s: string) => (s.match(/,|\band\b/g) ?? []).length >= 2
+export const NEAR_IDENTICAL = 0.85
 
 /**
  * Group same-concept cards (same name + overlapping answers). Returns card id -> group id
@@ -84,4 +96,14 @@ export function oncePerConcept<T extends { id: string }>(cards: T[], groups: Map
     used.add(g)
     return true
   })
+}
+
+/** "from anterior to lateral" vs "from lateral to anterior": same words, opposite meaning. */
+function reversedDirection(a: string, b: string) {
+  const dir = /\bfrom\b[\s\S]*\bto\b/i
+  if (!dir.test(a) || !dir.test(b)) return false
+  const seq = (s: string, keep: Set<string>) => (s.toLowerCase().match(/\d+(?:\.\d+)?|[a-z][a-z0-9]+/g) ?? []).filter((w) => keep.has(w))
+  const A = words(a), B = words(b)
+  const both = new Set([...A].filter((w) => B.has(w)))
+  return seq(a, both).join(' ') !== seq(b, both).join(' ')
 }

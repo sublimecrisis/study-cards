@@ -48,6 +48,7 @@ export function distractorCards(card: Card, pool: Card[], s: 'term' | 'definitio
   const seen = new Set([right.toLowerCase()])
   const scored = pool
     .filter((c) => c.id !== card.id && !c.drill && !c.occlusion && !sameAnswer(card, c)) // never offer a twin / same answer as a wrong option
+    .filter((c) => s === 'definition' || !questionTerm(c.term)) // a question-style name is never a wrong 'name' option
     .map((c) => {
       const t = side(c, s).trim()
       let shared = 0
@@ -82,7 +83,10 @@ export function makeQuestion(card: Card, pool: Card[], type: QType, answerWith: 
   }
   if (card.drill?.kind === 'match') return { card, type: 'match', promptSide: 'term', answerSide: 'definition', shuffled: shuffle(card.drill.pairs.map((p) => p[1])) }
   // In mixed mode, typed answers are always the (short) term — typing whole definitions isn't a fair test.
-  const answerSide: 'term' | 'definition' = card.occlusion
+  // A card named like a question ("Chronic disease is also called", "Define the 3 functions…")
+  // only makes sense one way round: show the name, pick the answer. Typing it isn't a fair test either.
+  if (questionTerm(card.term) && type === 'written') type = 'mc'
+  const answerSide: 'term' | 'definition' = card.occlusion || questionTerm(card.term)
     ? 'definition' // a diagram card always asks "name the covered part"
     : answerWith === 'both'
       ? type === 'written' || Math.random() < 0.5
@@ -175,4 +179,10 @@ export function gradeWritten(typed: string, answer: string): boolean {
     if (levenshtein(a, t) <= Math.max(1, Math.floor(a.length * 0.15))) return true
   }
   return false
+}
+
+/** Card names phrased as a question or instruction rather than a name. */
+export function questionTerm(term: string) {
+  const t = term.trim()
+  return /\?$|:$|\b(is|are) (also )?(called|known as)$|\b(includes?|consists? of)$/i.test(t) || /^(define|name|list|describe|explain|identify|which|what|how|why|when|who|give)\b/i.test(t)
 }
