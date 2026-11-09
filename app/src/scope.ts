@@ -9,7 +9,7 @@ import type { Card, CardSet, Course } from './types'
 export interface Scope {
   kind: 'all' | 'course' | 'set'
   id: string
-  filter: 'all' | 'starred' | 'check' | 'weak' | 'mixed' | 'tonight' | `tag:${string}`
+  filter: 'all' | 'starred' | 'check' | 'weak' | 'mixed' | 'tonight' | 'exam' | `tag:${string}`
 }
 
 export function readScope(params: URLSearchParams): Scope {
@@ -23,7 +23,7 @@ export const scopeQuery = (s: Scope) =>
 export const scopeKey = (s: Pick<Scope, 'kind' | 'id'>) => (s.kind === 'all' ? 'all' : `${s.kind}:${s.id}`)
 
 export const filterLabel = (f: Scope['filter']) =>
-  f === 'starred' ? 'Starred' : f === 'check' ? 'Needs check' : f === 'weak' ? 'Weakest' : f === 'mixed' ? 'Mixed up' : f === 'tonight' ? 'Before bed' : f.startsWith('tag:') ? f.slice(4)[0].toUpperCase() + f.slice(5) : ''
+  f === 'starred' ? 'Starred' : f === 'check' ? 'Needs check' : f === 'weak' ? 'Weakest' : f === 'mixed' ? 'Mixed up' : f === 'tonight' ? 'Before bed' : f === 'exam' ? 'Exam set' : f.startsWith('tag:') ? f.slice(4)[0].toUpperCase() + f.slice(5) : ''
 
 export interface Loaded {
   cards: Card[]
@@ -48,6 +48,7 @@ export async function loadScope(s: Scope): Promise<Loaded> {
   if (s.filter === 'starred') cards = cards.filter((c) => c.starred)
   else if (s.filter === 'check') cards = cards.filter((c) => c.needsCheck)
   else if (s.filter.startsWith('tag:')) cards = cards.filter((c) => c.tags.includes(s.filter.slice(4)))
+  else if (s.filter === 'exam') cards = cards.filter(inExamSet)
   else if (s.filter === 'tonight') cards = bedtimeCards(cards, await db.reviews.where('at').above(startOfDay(Date.now())).toArray())
   else if (s.filter === 'mixed') {
     const partners = partnerMap(await loadPairs())
@@ -97,3 +98,9 @@ export async function loadCoursePools(): Promise<(card: Card) => Card[]> {
   })
   return (card) => byCourse.get(courseOf.get(card.setId) ?? '') ?? [card]
 }
+
+/**
+ * Exam set: the condensed Essentials chapter cards plus the Exam Prep deck (organized by
+ * NASM's exam domains). Everything needed to pass, without the full-chapter extras.
+ */
+export const inExamSet = (c: Pick<Card, 'tags'>) => c.tags.includes('essentials') || c.tags.includes('exam prep')

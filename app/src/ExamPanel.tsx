@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { updateCourse } from './db'
 import { daysUntil, examBoost, newPerDayNeeded, readiness } from './exam'
-import { scopeQuery } from './scope'
+import { inExamSet, scopeQuery } from './scope'
 import { isDue } from './srs'
 import { saveSettings, type Settings } from './stats'
 import type { Card, CardSet, Course } from './types'
@@ -31,7 +31,7 @@ export default function ExamPanel({ course, sets, cards, settings }: { course: C
     )
 
   const days = daysUntil(exam)
-  const ess = studyable.filter((c) => c.tags.includes('essentials'))
+  const ess = studyable.filter(inExamSet) // Essentials + Exam Prep
   const focus = ess.length ? ess : studyable
   const r = readiness(focus, exam)
   const dueNow = studyable.filter((c) => isDue(c)).length
@@ -44,7 +44,7 @@ export default function ExamPanel({ course, sets, cards, settings }: { course: C
     })
     .filter((x) => x.n)
     .sort((a, b) => a.s.name.localeCompare(b.s.name, undefined, { numeric: true })) // Ch 1, Ch 2 … Ch 23
-  const q = scopeQuery({ kind: 'course', id: course.id, filter: ess.length ? 'tag:essentials' : 'all' })
+  const q = scopeQuery({ kind: 'course', id: course.id, filter: ess.length ? 'exam' : 'all' })
 
   return (
     <section className="panel exam">
@@ -66,7 +66,7 @@ export default function ExamPanel({ course, sets, cards, settings }: { course: C
         </div>
         <div className="exam-ready">
           <div className="exam-pct">{pct(r)}</div>
-          <div className="muted small">projected recall on exam day{ess.length ? ' (Essentials)' : ''}</div>
+          <div className="muted small">projected recall on exam day{ess.length ? ' (exam set: Essentials + Exam Prep)' : ''}</div>
         </div>
       </div>
       <div className="goal-bar wide">
@@ -79,7 +79,7 @@ export default function ExamPanel({ course, sets, cards, settings }: { course: C
           <b>{dueNow + boost}</b> reviews ready now ({dueNow} due{boost ? ` + ${boost} pulled forward so they're fresh on exam day` : ''})
         </li>
         <li>
-          <b>{need}</b> new {ess.length ? 'Essentials ' : ''}cards a day to see them all before the exam
+          <b>{need}</b> new exam-set cards a day to see them all before the exam
           {need !== settings.newPerDay && (
             <>
               {' '}

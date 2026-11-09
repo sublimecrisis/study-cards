@@ -1,3 +1,4 @@
+import { inExamSet } from '../scope'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -25,6 +26,8 @@ export default function CoursePage() {
     const filters: { f: Scope['filter']; label: string }[] = [{ f: 'all', label: `All ${cards.length}` }]
     const starred = cards.filter((c) => c.starred).length
     const check = cards.filter((c) => c.needsCheck).length
+    const examSet = cards.filter(inExamSet).length
+    if (cards.some((c) => c.tags.includes('essentials'))) filters.push({ f: 'exam', label: `🎯 Exam set ${examSet}` })
     if (starred) filters.push({ f: 'starred', label: `★ Starred ${starred}` })
     for (const [t, n] of [...tagN].filter(([, n]) => n >= cards.length * 0.2 && n < cards.length).sort((a, b) => b[1] - a[1]).slice(0, 3))
       filters.push({ f: `tag:${t}`, label: `${t[0].toUpperCase()}${t.slice(1)} ${n}` })

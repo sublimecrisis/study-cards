@@ -111,3 +111,12 @@ describe('interleave', () => {
     expect(out.map((x) => x.id)).toEqual(['a1', 'b1', 'c1', 'a2', 'c2', 'a3'])
   })
 })
+
+describe('exam set', () => {
+  it('= Essentials + Exam Prep, nothing else', async () => {
+    const { inExamSet } = await import('./scope')
+    expect(inExamSet({ tags: ['chapter 9', 'essentials'] })).toBe(true)
+    expect(inExamSet({ tags: ['exam prep', 'program design'] })).toBe(true)
+    expect(inExamSet({ tags: ['chapter 9', 'full'] })).toBe(false)
+  })
+})

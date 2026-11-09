@@ -26,7 +26,7 @@ export default function Home() {
       ...c,
       sets: sets.filter((s) => s.courseId === c.id).length,
       b: breakdown(byCourse.get(c.id) ?? []),
-      essentials: (byCourse.get(c.id) ?? []).some((x) => x.tags.includes('essentials')),
+      examSet: (byCourse.get(c.id) ?? []).some((x) => x.tags.includes('essentials')),
     }))
     const active = rows.filter((c) => !c.archived)
     const [settings, day] = await Promise.all([getSettings(), loadDayStats()])
@@ -64,8 +64,8 @@ export default function Home() {
               🎯 <b>{c.name}</b> exam {d === 0 ? 'today' : d === 1 ? 'tomorrow' : `in ${d} days`}
             </Link>
             <span className="exam-chip-actions">
-              {/* Same as the course page's Exam review: Essentials only when the course has them. */}
-              <Link to={`/study/review?${scopeQuery({ kind: 'course', id: c.id, filter: c.essentials ? 'tag:essentials' : 'all' })}`} className="btn small primary">
+              {/* Same as the course page's Exam review: the exam set (Essentials + Exam Prep). */}
+              <Link to={`/study/review?${scopeQuery({ kind: 'course', id: c.id, filter: c.examSet ? 'exam' : 'all' })}`} className="btn small primary">
                 Exam review
               </Link>
               <Link to={`/exam?${scopeQuery({ kind: 'course', id: c.id, filter: 'all' })}`} className="btn small">
