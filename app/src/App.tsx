@@ -1,3 +1,5 @@
+import Practice from './pages/Practice'
+import Browse from './pages/Browse'
 import Stats from './pages/Stats'
 import Focus from './pages/Focus'
 import Mixed from './pages/Mixed'
@@ -53,6 +55,8 @@ export default function App() {
           <Route path="/study/review" element={<Review />} />
           <Route path="/study/learn" element={<Learn />} />
           <Route path="/study/flashcards" element={<Flashcards />} />
+          <Route path="/study/practice" element={<Practice />} />
+          <Route path="/study/browse" element={<Browse />} />
           <Route path="/quiz" element={<Quiz />} />
           <Route path="/exam" element={<PracticeExam />} />
           <Route path="/set/:id/diagram" element={<DiagramEditor />} />

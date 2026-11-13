@@ -70,6 +70,18 @@ export function StudyLauncher(props: { base: Omit<Scope, 'filter'>; due: number;
             Flashcards<small>flip & sort</small>
           </span>
         </Link>
+        <Link className="mode" to={`/study/practice?${q}`}>
+          <span className="mode-icon">☑</span>
+          <span>
+            Practice<small>multiple choice, no schedule</small>
+          </span>
+        </Link>
+        <Link className="mode" to={`/study/browse?${q}`}>
+          <span className="mode-icon">☰</span>
+          <span>
+            Browse<small>read through</small>
+          </span>
+        </Link>
         <Link className="mode" to={`/quiz?${q}`}>
           <span className="mode-icon">✓</span>
           <span>
