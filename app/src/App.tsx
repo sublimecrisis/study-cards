@@ -5,7 +5,7 @@ import Focus from './pages/Focus'
 import Mixed from './pages/Mixed'
 import Hooks from './pages/Hooks'
 import FocusLayer, { FocusPill } from './FocusLayer'
-import { HashRouter, NavLink, Route, Routes } from 'react-router-dom'
+import { HashRouter, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import Home from './pages/Home'
 import CoursePage from './pages/CoursePage'
 import SetPage from './pages/SetPage'
@@ -29,6 +29,21 @@ const NAV = [
   { to: '/settings', label: 'Settings', icon: '⚙' },
 ]
 
+const MODES: Record<string, string> = {
+  '/study/review': '↻ Review', '/study/learn': '🧠 Learn', '/study/flashcards': '🃏 Flashcards',
+  '/study/practice': '☑ Practice', '/study/browse': '☰ Browse', '/quiz': '✎ Quiz', '/exam': '🎯 Practice exam',
+}
+/** Says which study mode you're in. */
+function ModeTitle() {
+  const { pathname, search } = useLocation()
+  let t = MODES[pathname]
+  if (!t) return null
+  const f = new URLSearchParams(search).get('filter')
+  if (pathname === '/study/review' && f === 'tonight') t = '🌙 Before bed'
+  else if (pathname === '/study/review' && f === 'exam') t = '🎯 Exam review'
+  return <h1 className="mode-title">{t}</h1>
+}
+
 export default function App() {
   return (
     <HashRouter>
@@ -40,6 +55,7 @@ export default function App() {
       </header>
       <main className="page">
         <FocusLayer />
+        <ModeTitle />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/course/:id" element={<CoursePage />} />

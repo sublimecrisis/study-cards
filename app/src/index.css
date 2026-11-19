@@ -523,3 +523,4 @@ mark.key-word { background: #fde68a; color: #422006; border-radius: 3px; padding
 .pace-tiles b { font-size: 1.05rem; }
 .round-table th, .round-table td { text-align: center; }
 @media (max-width: 420px) { .pace-tiles { grid-template-columns: repeat(3, 1fr); } }
+.mode-title { font-size: 1.15rem; margin: 0 0 .5rem; }
