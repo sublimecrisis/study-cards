@@ -16,17 +16,26 @@ export default function Browse() {
   const [cards, setCards] = useState<Card[] | null>(null)
   const [label, setLabel] = useState('')
   const [i, setI] = useState(0)
+  const posKey = `browse-pos:${params.get('scope') ?? 'all'}:${params.get('filter') ?? 'all'}`
 
   useEffect(() => {
     loadScope(scope).then(({ cards, label }) => {
       setCards(cards)
       setLabel(label)
-      setI(0)
+      // Reopen at the card you last had open in this scope (if it's still there).
+      let saved: string | null = null
+      try { saved = localStorage.getItem(posKey) } catch { /* private window */ }
+      const at = saved ? cards.findIndex((c) => c.id === saved) : -1
+      setI(Math.max(0, at))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.toString()])
 
   const n = cards?.length ?? 0
+  useEffect(() => {
+    if (cards?.[i]) try { localStorage.setItem(posKey, cards[i].id) } catch { /* not remembered */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cards, i])
   const go = (d: number) => setI((x) => Math.max(0, Math.min(n - 1, x + d)))
 
   useEffect(() => {
@@ -52,6 +61,7 @@ export default function Browse() {
         <Link to={back} className="crumb">← {label}</Link>
         <span className="muted small">
           {i + 1} / {n}
+          {i > 0 && <> · <button className="btn link small" onClick={() => setI(0)}>Start over</button></>}
         </span>
       </div>
       <SessionBar done={i + 1} total={n} />
